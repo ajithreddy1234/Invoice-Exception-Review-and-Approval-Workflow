@@ -6,18 +6,23 @@ and records eligible acceptances transactionally in Postgres. It does not execut
 payments.
 
 [Open the application](https://asa-invoice-review.onrender.com) ·
-[Demo guide](docs/DEMO.md) · [Deployment](docs/DEPLOYMENT.md)
+[Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md)
 
-## Try the demo
+## Workspace access
 
-Sign in with the dedicated admin or normal-user credentials supplied privately.
-The opening page is **Upload invoice**. Open **Samples & demo guide** to download
-an unused sample pack and see its scenario order, expected results and limitations.
+Sign in with an account provisioned by your workspace administrator. The opening
+page is **Upload invoice**, followed by **Dashboard** and **Invoices**. Normal users
+see their own submissions; administrators review workspace records and resolve
+eligible exceptions with a reason and source evidence.
 
-Each pack has independent PO budgets and invoice identities. Accepting a sample
-consumes its budget; uploading it again must be blocked as a duplicate. An admin
-can prepare another pack without deleting previous records. Normal users see only
-their submissions; admins review all records and resolve eligible exceptions.
+Upload the original PDF, JPEG or PNG. The interface shows reading/verification
+progress, original-source evidence, each check and the resulting decision.
+Accepted amounts and remaining PO balances are visible on the dashboard;
+spreadsheet publication has its own status and safe retry.
+
+Synthetic fixtures and the evaluator walkthrough live in the source repository
+under `tests/fixtures/` and `docs/DEMO.md`. They are development resources, excluded
+from the server image. The application has no sample catalog or download API.
 
 ## What it checks
 
@@ -109,9 +114,10 @@ require HTTPS and Secure cookies.
 
 The first preparation command is a read-only plan. Applying appends matching PO
 and line rows, preserves existing references, verifies read-back and activates the
-normal validated import. Conflicting existing codes are rejected. Include the new
-assets in a deployment to make them downloadable in the app. Packs B and C are
-included. Never delete acceptances or rewrite report rows to rehearse.
+normal validated import. Conflicting existing codes are rejected. Pack files are
+written to `tests/fixtures/demo_packs/` for offline testing and walkthroughs; they
+are not shipped by the web service. Packs B and C are included in the source.
+Never delete acceptances or rewrite report rows to rehearse.
 
 ## Verify
 
@@ -161,8 +167,10 @@ uv export --frozen --no-dev --no-emit-project --format requirements-txt --output
   Workers pause while a sleeping host is inactive. There is no always-on guarantee.
 - Do not sort/delete assigned report rows or overwrite another acceptance's cells.
   Conflicts require reconciliation; publication retries do not accept again.
-- This is a single-tenant prototype using synthetic demo data. Demo credentials
-  are private. Free-tier quotas and host wake-up delays remain deployment limits.
+- The deployment has one procurement workspace and currently contains synthetic
+  evaluation records. Provisioned evaluator credentials are private. Free-tier
+  quotas and host wake-up delays remain deployment limits; see the operations guide
+  before connecting a live business workflow.
 
 ## Deployment and release
 
@@ -199,6 +207,6 @@ as duplicates before any extraction work. New files require live extraction.
 
 Render Free still sleeps after 15 minutes without traffic and can display its own
 allocation screen while waking. Application code cannot replace that host page.
-Open the app in advance of a demonstration. No paid upgrade or keep-alive job is
+Allow the service to wake before time-sensitive use. No paid upgrade or keep-alive job is
 installed. Host HTML responses are treated as unavailable, never as successful
 API results, and the client does not automatically replay writes.

@@ -450,6 +450,32 @@ def test_database_recovers_without_a_redeploy_and_workers_start_once_after_permi
         assert len(calls)==3 and app.state.startup=='database_verified'
         workers.start.assert_called_once()
         response=client.get('/health/live')
-        assert response.json()['version']=='0.6.1'
+        assert response.json()['version']=='0.7.0'
         assert 0<=response.json()['uptime_seconds']<3
         assert 'private' not in response.text
+
+
+@pytest.mark.parametrize('secure',[False,True])
+def test_security_headers_cover_pages_api_errors_and_origin_rejections(secure):
+    origin='https://workspace.example' if secure else ORIGIN
+    config=settings(app_origin=origin,cookie_secure=secure)
+    with TestClient(create_app(config,db=FakeDatabase(),auth=FakeAuth(),sheets=MagicMock())) as client:
+        responses=[client.get('/'),client.get('/api/me'),client.get('/api/demo'),
+                   client.post('/api/auth/login',headers={'Origin':'https://untrusted.example'},json={})]
+        for response in responses:
+            assert response.headers['x-frame-options']=='DENY'
+            assert response.headers['cross-origin-resource-policy']=='same-origin'
+            assert response.headers['permissions-policy']=='camera=(), microphone=(), geolocation=()'
+            assert response.headers['cache-control']=='no-store'
+            assert bool(response.headers.get('strict-transport-security')) is secure
+
+
+def test_database_error_does_not_expose_internal_sql_diagnostics(boundary):
+    import psycopg
+    _,client,db,_,_=boundary
+    client.cookies.set(COOKIE,'verified-user-token')
+    with patch.object(db,'read_one',side_effect=psycopg.errors.UndefinedTable('private schema details')):
+        response=client.get('/api/me')
+    assert response.status_code==503
+    assert response.json()=={'detail':'DATABASE_OPERATION_FAILED'}
+    assert 'private' not in response.text and 'sqlstate' not in response.text

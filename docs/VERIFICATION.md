@@ -1,13 +1,13 @@
 # Verification and practical limits
 
-Release checks on 5 November 2026 (India time):
+Release checks on 6 November 2026 (India time):
 
-- Python components: 237 tests plus 37 subtests passed. Native tests are skipped
+- Python components: 242 tests plus 37 subtests passed. Native tests are skipped
   in this command and executed separately.
 - Isolated native Postgres: 46 tests passed after a clean dependency install.
   Real separate DB connections exercise financial locks, uniqueness, rollback,
   correction/review permissions and publication recovery; providers are simulated.
-- Frontend: 18 tests and the current production build passed. Request-boundary
+- Frontend: 19 tests and the current production build passed. Request-boundary
   tests cover host HTML, bounded body reads and no automatic mutation replay.
 - A Linux AMD64 Docker image built with pinned Python/JS dependencies. A local
   512 MiB / 1 CPU container passed app/readiness/access checks, four PDF/JPEG/PNG
@@ -35,7 +35,7 @@ uncertain, and references can expire. Held/failed processing does not become an
 acceptance. There is no forced financial approval, payment, guessed total,
 destructive demo reset, retained output-invoice PDF or fixture-output shortcut.
 
-Fresh-pack tests also cover independent identities, exact within-pack duplicates, cross-pack ambiguous-PO isolation, authenticated sample downloads, immutable preparation conflicts, validation preservation and at-most-two provider attempts.
+Fresh-pack tests also cover independent identities, exact within-pack duplicates, cross-pack ambiguous-PO isolation, offline sample preparation and removal of hosted sample routes, immutable preparation conflicts, validation preservation and at-most-two provider attempts.
 
 Startup/reuse hardening verifies that delayed DB/Sheets initialization cannot
 block the HTTP listener, workers wait for the permission check, a DB outage can
@@ -46,3 +46,10 @@ A stale-reference read is explicitly simulated in its cache-gate test; native SQ
 financial/uniqueness/locking checks continue to run in the separate suite.
 
 Pool logging is sanitized before propagation: driver connection URI arguments and exception tracebacks are omitted. A regression test exercises a credential-bearing synthetic driver error.
+
+The workspace release removes the guide route, sample prompts and evaluation
+branding. Synthetic PDFs move to `tests/fixtures/demo_packs/`; only offline tools
+import their catalog. API tests verify 404 sample endpoints for unauthenticated,
+user and admin access. Security-header tests cover HTTPS/local HTTP, successful
+pages, unauthorized APIs, removed routes and cross-origin mutation denials.
+Database errors no longer return internal SQL state to clients.

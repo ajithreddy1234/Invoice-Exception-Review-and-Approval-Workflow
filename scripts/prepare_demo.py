@@ -16,7 +16,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from app.config import Settings
 from app.db import Database
-from app.demo import pack_data
+from tools.demo_packs import pack_data
 from app.procurement import HEADERS, SheetsGateway, parse_reference, import_reference
 
 NUMERIC={'authorized_gross','quantity','unit_net','tax_rate_percent'}

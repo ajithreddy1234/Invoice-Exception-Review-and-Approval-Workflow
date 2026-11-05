@@ -1,6 +1,0 @@
-po_code,line_code,description,quantity,unit,unit_net,tax_rate_percent
-PO-DEMO-C-FULL,SERVICE,Office support - demo C,10.0000,hour,1000.00,0.00
-PO-DEMO-C-PARTIAL,SERVICE,Consulting services - demo C,10.0000,hour,1000.00,0.00
-PO-DEMO-C-SCAN,SERVICE,Document support - demo C,10.0000,hour,1000.00,0.00
-PO-DEMO-C-AMBIG-A,SERVICE,Website design - demo C,10.0000,hour,1000.00,0.00
-PO-DEMO-C-AMBIG-B,SERVICE,Website design - demo C,10.0000,hour,1000.00,0.00

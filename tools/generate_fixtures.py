@@ -494,7 +494,7 @@ if __name__ == '__main__':
     parser.add_argument('--output-dir', type=Path)
     parser.add_argument('--pack', help='Create a fresh demo pack, e.g. B, C or D; never reset an existing pack')
     args = parser.parse_args()
-    target=args.output_dir or (ROOT/'app'/'demo_assets'/'packs'/args.pack if args.pack else ROOT/'tests'/'fixtures')
+    target=args.output_dir or (ROOT/'tests'/'fixtures'/'demo_packs'/args.pack if args.pack else ROOT/'tests'/'fixtures')
     result = generate_demo_pack(target.resolve(),args.pack) if args.pack else generate(target.resolve())
     print(json.dumps({'generated':len(result['fixtures']), 'pack':args.pack,
                       'output_dir':str(target.resolve())}, indent=2))

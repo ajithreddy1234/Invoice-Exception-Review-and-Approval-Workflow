@@ -141,7 +141,7 @@ export function uploadError(file) {
 export function parseRoute(hash) {
   const raw = String(hash || "").replace(/^#/, "");
   const [part, id] = raw.split("/");
-  const page = ["dashboard", "upload", "invoices", "guide"].includes(part)
+  const page = ["dashboard", "upload", "invoices"].includes(part)
     ? part
     : "upload";
   return {

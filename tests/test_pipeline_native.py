@@ -164,8 +164,8 @@ def test_upload_request_idempotence_and_reused_key_conflict(system):
     assert response.json()['detail']=='IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_FILE'
 
 
-def test_demo_packs_import_without_reset_and_catalog_tracks_only_shared_sample_usage(system):
-    from app.demo import catalog,ASSETS
+def test_offline_packs_import_without_reset_and_track_commitments_independently(system):
+    from tools.demo_packs import catalog,ASSETS
     packs=catalog();directory=FIXTURES.parent.parent/'reference_data'
     raw={p.stem:list(csv.reader(p.open())) for p in directory.glob('*.csv')}
     for pack in packs:
@@ -173,21 +173,20 @@ def test_demo_packs_import_without_reset_and_catalog_tracks_only_shared_sample_u
             raw[name]+=[[row[key] for key in raw[name][0]] for row in records]
     with system['db'].transaction() as conn:
         import_reference(conn,parse_reference(raw),'native-demo-packs',str(ADMIN))
-    response=system['client'].get('/api/demo');assert response.status_code==200,response.text
-    assert all(p['prepared'] and not p['used'] for p in response.json()['packs'])
+    assert scalar(system,"SELECT count(*) FROM app.reference_pos WHERE reference_version_id=(SELECT active_reference_version_id FROM app.runtime_state WHERE singleton) AND po_code LIKE 'PO-DEMO-%%'")==10
     b=next(p for p in packs if p['pack']=='B');entry=b['fixtures'][0]
     system['extractor'].candidate=candidate(number=entry['invoice_number'],po=entry['po_code'],description=b['reference_rows']['POLines'][0]['description'])
     sid,_=upload(system,data=(ASSETS/'B'/entry['file']).read_bytes())
     system['pipeline'].process_once();assert state(system,sid)['submission']['status']=='accepted'
-    usage={p['pack']:p['used'] for p in system['client'].get('/api/demo').json()['packs']}
-    assert usage['B'] is True and all(not used for pack,used in usage.items() if pack!='B')
+    assert scalar(system,"SELECT sum(amount_minor) FROM app.acceptances WHERE po_code LIKE 'PO-DEMO-B-%%'")==1000000
+    assert scalar(system,"SELECT count(*) FROM app.acceptances WHERE po_code LIKE 'PO-DEMO-C-%%'")==0
     again,_=upload(system,data=(ASSETS/'B'/b['fixtures'][1]['file']).read_bytes())
     system['pipeline'].process_once();assert state(system,again)['submission']['status']=='blocked_duplicate'
     assert scalar(system,'SELECT count(*) FROM app.acceptances')==1
 
 
 def test_demo_ambiguous_candidates_are_isolated_to_the_selected_pack(system):
-    from app.demo import catalog,ASSETS
+    from tools.demo_packs import catalog,ASSETS
     directory=FIXTURES.parent.parent/'reference_data'
     raw={p.stem:list(csv.reader(p.open())) for p in directory.glob('*.csv')}
     for p in catalog():

@@ -22,7 +22,6 @@ from .processing import Pipeline, Workers
 from .invoice_api import router as invoice_router, UploadLimit
 from .workspace import router as workspace_router
 from .review import router as review_router
-from .demo import router as demo_router
 
 log = logging.getLogger(__name__)
 STARTUP_RETRY_SECONDS = 10
@@ -109,7 +108,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
             if auth is None:
                 await run_in_threadpool(app.state.auth.close)
 
-    app = FastAPI(title='ASA Invoice Review API', version='0.6.1', lifespan=lifespan,
+    app = FastAPI(title='Invoice Review API', version='0.7.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db or Database(settings.database_url.get_secret_value())
@@ -130,13 +129,18 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
     @app.middleware('http')
     async def same_origin_and_headers(request: Request, call_next):
         # Same-origin browser UI only: no CORS exceptions or state-changing GETs.
-        if request.method not in ('GET', 'HEAD', 'OPTIONS'):
-            if request.headers.get('origin') != settings.app_origin:
-                return JSONResponse({'detail': 'ORIGIN_REJECTED'}, status_code=403)
-        response = await call_next(request)
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.headers.get('origin') != settings.app_origin:
+            response = JSONResponse({'detail': 'ORIGIN_REJECTED'}, status_code=403)
+        else:
+            response = await call_next(request)
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        if settings.app_origin.startswith('https://'):
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000'
         response.headers['Content-Security-Policy'] = "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
         return response
 
@@ -152,7 +156,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
 
     @app.exception_handler(psycopg.Error)
     async def database_error(request, exc):
-        return JSONResponse({'detail': 'DATABASE_OPERATION_FAILED', 'sqlstate': exc.sqlstate}, status_code=503)
+        return JSONResponse({'detail': 'DATABASE_OPERATION_FAILED'}, status_code=503)
 
     @app.exception_handler(ReferenceValidationError)
     async def invalid_reference(request, exc):
@@ -165,7 +169,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
         if index.is_file():
             return FileResponse(index)
         return '''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>ASA Invoice Review — Backend</title><body><main><h1>Invoice Review</h1>
+        <title>Invoice Review — Backend</title><body><main><h1>Invoice Review</h1>
         <p>Invoice processing backend is running. Build the web client to open the upload dashboard.</p>
         <p>Approval ledger: Postgres. Procurement source: Google Sheets.</p>
         <p><a href="/health/live">Liveness</a> · <a href="/health/ready">Readiness</a></p>
@@ -274,7 +278,6 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
     app.include_router(invoice_router)
     app.include_router(workspace_router)
     app.include_router(review_router)
-    app.include_router(demo_router)
     assets=Path(__file__).resolve().parents[1]/'web/dist/assets'
     if assets.is_dir():
         app.mount('/assets',StaticFiles(directory=assets),name='assets')

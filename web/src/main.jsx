@@ -16,7 +16,6 @@ import {
 import { SourceViewer, ReviewEditor } from "./ReviewWorkbench.jsx";
 import "./styles.css";
 import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
-import DemoGuide from "./DemoGuide.jsx";
 import { apiRequest } from "./api.js";
 
 const dateTime = (value) =>
@@ -116,7 +115,7 @@ function Login({ onLogin, initialError, request }) {
         <a href="/" className="brand">
           <span className="brand-mark">I</span>
           <span>
-            Invoice review<small>ASA CASE STUDY</small>
+            Invoice review<small>PROCUREMENT OPERATIONS</small>
           </span>
         </a>
         <div className="login-message">
@@ -205,10 +204,9 @@ function Login({ onLogin, initialError, request }) {
             <span aria-hidden="true">→</span>
           </button>
           <p className="form-note">
-            Demo reviewers: use the credentials supplied with the submission.
-            Access is assigned by an administrator.
+            Access is managed by your workspace administrator. Contact them if
+            you need an account.
           </p>
-          <p className="small-muted">This free demo can take about a minute to start after inactivity. Once this page opens, sign in normally.</p>
         </form>
       </section>
     </main>
@@ -255,7 +253,7 @@ function Upload({ onUpload, request }) {
       </div>
       <div className="upload-content">
         <h2>Verify an invoice</h2>
-        <p>PDF, JPG or PNG · Up to 5 MiB and 3 pages · English OCR</p>
+        <p>PDF, JPG or PNG · Up to 5 MiB and 3 pages · English documents</p>
         <div className="file-controls">
           <label className="file-label">
             Choose invoice
@@ -612,10 +610,10 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
           </div>
         )}
         {revision?.evidence?.extractor?.origin === "cache" && (
-          <div className="notice" role="status"><strong>Using saved extraction</strong><p>Identical source bytes and matching extractor versions. All nine checks were rerun against the current procurement snapshot and ledger.</p></div>
+          <div className="notice" role="status"><strong>Using saved extraction</strong><p>The saved reading of this invoice was reused. Its source evidence and all nine checks were verified again against current records.</p></div>
         )}
         {revision?.evidence?.extractor?.origin === "provider" && (
-          <p className="small-muted">Fresh extraction · source text read and sent to the extraction service for this revision.</p>
+          <p className="small-muted">Invoice details read from the original source for this revision.</p>
         )}
         {publication?.last_error && (
           <div className="notice warning-note">
@@ -1144,7 +1142,7 @@ function App() {
   if (starting)
     return (
       <div className="app-loading" role="status">
-        <span className="brand-mark">I</span><div><strong>Opening your workspace…</strong><p>If the free service was inactive, allow about a minute for it to start.</p></div>
+        <span className="brand-mark">I</span><div><strong>Opening your workspace…</strong><p>Checking your session and connecting to the workspace.</p></div>
       </div>
     );
   if (!user)
@@ -1186,13 +1184,11 @@ function App() {
       "Invoices",
       "Find an invoice and inspect its evidence and decision.",
     ],
-    guide: ["Demo guide", "Fresh sample invoices, expected results and practical limits."],
   };
   const navItems = [
     ["upload", "↑", "Upload invoice"],
     ["dashboard", "◫", "Dashboard"],
     ["invoices", "▤", "Invoices"],
-    ["guide", "?", "Demo guide"],
   ];
   const nav = (mobile = false) => (
     <nav
@@ -1222,7 +1218,7 @@ function App() {
         <a href="#upload" className="brand">
           <span className="brand-mark">I</span>
           <span>
-            Invoice review<small>ASA WORKSPACE</small>
+            Invoice review<small>PROCUREMENT OPERATIONS</small>
           </span>
         </a>
         <div className="workspace-tag">
@@ -1282,7 +1278,6 @@ function App() {
           </button>
         </header>
         <ErrorBox>{listError}</ErrorBox>
-        {page === "guide" && <DemoGuide request={request} onUpload={() => navigate("upload")} />}
         {page === "dashboard" && (
           <>
             <Dashboard
@@ -1300,7 +1295,6 @@ function App() {
         )}
         {page === "upload" && (
           <div className="upload-page">
-            <div className="notice demo-start"><strong>Testing the demo?</strong> Download a fresh sample pack and follow the scenario order. <button className="secondary compact" onClick={() => navigate("guide")}>Samples & demo guide</button></div>
             <Upload
               request={request}
               onUpload={(id) => {
@@ -1319,7 +1313,7 @@ function App() {
                   [
                     "01",
                     "Read the source",
-                    "Text is extracted from the PDF, or OCR reads a scanned PDF or image.",
+                    "Invoice details are linked to the printed source so you can review the evidence.",
                   ],
                   [
                     "02",

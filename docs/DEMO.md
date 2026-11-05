@@ -3,18 +3,20 @@
 App: https://asa-invoice-review.onrender.com
 
 Use the dedicated admin/user credentials supplied privately. Do not put passwords
-in the repository, sample ZIPs or recording. Open **Demo guide** after signing in
-for sample downloads, expected results and assumptions.
+in the repository, sample ZIPs or recording. The deployed application contains
+only the normal invoice workflow. Use this repository document for the walkthrough.
+Download the source archive and open `tests/fixtures/demo_packs/C/invoice-demo-C.zip`
+for the reserved sample pack; there is no in-app sample-download endpoint.
 
 ## Prepare
 
 Use pack B for rehearsal and reserve an unused pack for the evaluator. Pack C is
 provided separately for that purpose. Packs are shared across the workspace;
-check the live availability label before starting. Re-uploading an accepted file
+check the actual invoice history and PO balances before starting. Re-uploading an accepted file
 must be blocked. The system never deletes the ledger to make a demo appear fresh.
 
 Open the deployment in advance, check reference freshness, and allow any inactive
-service to start. Choose a prepared, unused pack and download its ZIP. The package
+service to start. Choose an unused pack from `tests/fixtures/demo_packs/`. The package
 contains seven synthetic PDFs and a scenario guide. Their expected results are
 instructions for the evaluator, never inputs to extraction or approval logic.
 
@@ -75,8 +77,8 @@ read-only preparation plan, then append/import its matching references:
 .venv/bin/python scripts/prepare_demo.py --packs D --apply
 ```
 
-Deploy the new assets so they appear in the guide. Existing conflicting codes are
-rejected. Matching rows are reused without duplicates; unchanged current references
+The assets remain offline; provide their ZIP separately for the walkthrough.
+Existing conflicting codes are rejected. Matching rows are reused without duplicates; unchanged current references
 do not need a new version. No accepted records or report rows are reset.
 
 ## State the limits

@@ -1,4 +1,4 @@
-"""Synthetic downloads never grant invoice access or bypass financial validation."""
+"""Offline fixture tooling never exposes samples through the application."""
 from datetime import datetime
 from decimal import Decimal
 from hashlib import sha256
@@ -16,7 +16,7 @@ import pytest
 
 from app.auth import Actor,current_actor
 from app.config import Settings
-from app.demo import ASSETS,catalog
+from tools.demo_packs import ASSETS,catalog
 from app.main import create_app
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -82,17 +82,16 @@ def test_preparation_preserves_validation_and_rejects_formula_or_chip_exemplars(
         prepare.validate_exemplar([{'userEnteredValue':{'formulaValue':'=1'}}],[['open']],headers)
 
 
-def test_downloads_require_auth_and_whitelist_only_synthetic_files():
+@pytest.mark.parametrize('role',[None,'user','admin'])
+def test_sample_routes_are_absent_even_for_authenticated_users(role):
     settings=Settings(_env_file=None,database_url='',supabase_url='',supabase_publishable_key='',
                       supabase_secret_key='',google_application_credentials='',google_spreadsheet_id='',
                       gemini_api_key='',gemini_model='',worker_enabled=False,auto_import_on_startup=False)
     app=create_app(settings)
+    if role:
+        app.dependency_overrides[current_actor]=lambda:Actor(UUID('11111111-1111-4111-8111-111111111111'),'Workspace user',role)
     with TestClient(app) as client:
-        assert client.get('/api/demo/packs/B/download').status_code==401
-        app.dependency_overrides[current_actor]=lambda:Actor(UUID('11111111-1111-4111-8111-111111111111'),'Reviewer','user')
-        response=client.get('/api/demo/packs/B/files/01_clean_invoice.pdf')
-        assert response.status_code==200 and response.content.startswith(b'%PDF-')
-        assert response.headers['cache-control']=='no-store'
-        assert client.get('/api/demo/packs/B/files/.env').status_code==404
-        assert client.get('/api/demo/packs/UNKNOWN/download').status_code==404
-        assert client.get('/api/demo/packs/B/download').content.startswith(b'PK')
+        for path in ('/api/demo','/api/demo/packs/B/download','/api/demo/packs/B/files/01_clean_invoice.pdf'):
+            response=client.get(path)
+            assert response.status_code==404
+            assert response.headers['cache-control']=='no-store'

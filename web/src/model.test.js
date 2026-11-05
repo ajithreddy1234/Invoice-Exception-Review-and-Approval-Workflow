@@ -159,3 +159,9 @@ test("review queue combines held invoices while the exact status filter stays ex
   assert.equal(filterInvoices(items, { status: "needs_review" }).length, 1);
   assert.equal(filterInvoices(items, { vendor: "B" }).length, 1);
 });
+
+test("removed guide links fall back to invoice upload", async () => {
+  const { parseRoute } = await import("./model.js");
+  for (const hash of ["#guide", "#guide/anything", "#samples"])
+    assert.deepEqual(parseRoute(hash), { page: "upload", invoiceId: null });
+});
