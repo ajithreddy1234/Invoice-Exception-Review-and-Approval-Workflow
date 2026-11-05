@@ -20,6 +20,7 @@ from .processing import Pipeline, Workers
 from .invoice_api import router as invoice_router, UploadLimit
 from .workspace import router as workspace_router
 from .review import router as review_router
+from .demo import router as demo_router
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
         if auth is None:
             await run_in_threadpool(app.state.auth.close)
 
-    app = FastAPI(title='ASA Invoice Review API', version='0.4.1', lifespan=lifespan,
+    app = FastAPI(title='ASA Invoice Review API', version='0.5.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db or Database(settings.database_url.get_secret_value())
@@ -229,6 +230,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
     app.include_router(invoice_router)
     app.include_router(workspace_router)
     app.include_router(review_router)
+    app.include_router(demo_router)
     assets=Path(__file__).resolve().parents[1]/'web/dist/assets'
     if assets.is_dir():
         app.mount('/assets',StaticFiles(directory=assets),name='assets')

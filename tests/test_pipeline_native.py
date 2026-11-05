@@ -162,6 +162,44 @@ def test_upload_request_idempotence_and_reused_key_conflict(system):
         data={'request_key':str(key)},files={'file':('different.pdf',(FIXTURES/'split_6000.pdf').read_bytes(),'application/pdf')})
     assert response.status_code==409
     assert response.json()['detail']=='IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_FILE'
+
+
+def test_demo_packs_import_without_reset_and_catalog_tracks_only_shared_sample_usage(system):
+    from app.demo import catalog,ASSETS
+    packs=catalog();directory=FIXTURES.parent.parent/'reference_data'
+    raw={p.stem:list(csv.reader(p.open())) for p in directory.glob('*.csv')}
+    for pack in packs:
+        for name,records in pack['reference_rows'].items():
+            raw[name]+=[[row[key] for key in raw[name][0]] for row in records]
+    with system['db'].transaction() as conn:
+        import_reference(conn,parse_reference(raw),'native-demo-packs',str(ADMIN))
+    response=system['client'].get('/api/demo');assert response.status_code==200,response.text
+    assert all(p['prepared'] and not p['used'] for p in response.json()['packs'])
+    b=next(p for p in packs if p['pack']=='B');entry=b['fixtures'][0]
+    system['extractor'].candidate=candidate(number=entry['invoice_number'],po=entry['po_code'],description=b['reference_rows']['POLines'][0]['description'])
+    sid,_=upload(system,data=(ASSETS/'B'/entry['file']).read_bytes())
+    system['pipeline'].process_once();assert state(system,sid)['submission']['status']=='accepted'
+    usage={p['pack']:p['used'] for p in system['client'].get('/api/demo').json()['packs']}
+    assert usage['B'] is True and all(not used for pack,used in usage.items() if pack!='B')
+    again,_=upload(system,data=(ASSETS/'B'/b['fixtures'][1]['file']).read_bytes())
+    system['pipeline'].process_once();assert state(system,again)['submission']['status']=='blocked_duplicate'
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==1
+
+
+def test_demo_ambiguous_candidates_are_isolated_to_the_selected_pack(system):
+    from app.demo import catalog,ASSETS
+    directory=FIXTURES.parent.parent/'reference_data'
+    raw={p.stem:list(csv.reader(p.open())) for p in directory.glob('*.csv')}
+    for p in catalog():
+        for name,records in p['reference_rows'].items():raw[name]+=[[row[key] for key in raw[name][0]] for row in records]
+    with system['db'].transaction() as conn:import_reference(conn,parse_reference(raw),'native-demo-packs',str(ADMIN))
+    p=next(p for p in catalog() if p['pack']=='C');entry=p['fixtures'][5]
+    system['extractor'].candidate=candidate(number=entry['invoice_number'],po=None,
+        description=p['reference_rows']['POLines'][3]['description'],quantity='5',total='5000.00')
+    sid,_=upload(system,data=(ASSETS/'C'/entry['file']).read_bytes());system['pipeline'].process_once()
+    result=state(system,sid)
+    assert result['submission']['status']=='needs_review'
+    assert {row['po_code'] for row in result['validation']['po_candidates']}=={'PO-DEMO-C-AMBIG-A','PO-DEMO-C-AMBIG-B'}
     assert scalar(system,'SELECT count(*) FROM app.submissions')==1
 
 

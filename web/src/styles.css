@@ -1650,9 +1650,9 @@ button:hover:not(:disabled) {
   font-size: 24px;
   font-weight: 600;
 }
-.attention-number.green {
-  background: #eaf1df;
-  color: #577a45;
+.attention-number.amber {
+  background: #fbefd8;
+  color: #885c0f;
 }
 .attention-card strong {
   font-size: 12px;
@@ -2620,4 +2620,26 @@ body {
   .workspace {
     scroll-behavior: auto;
   }
+}
+
+/* Demo samples share the workspace scroller and remain usable on narrow screens. */
+.demo-start { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.demo-guide { min-width: 0; }
+.demo-guide h2 { margin: 0 0 12px; }
+.demo-guide p, .demo-guide li, .demo-legend dd { line-height: 1.65; }
+.demo-guide .button-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.demo-pack-select { display: flex; flex-direction: column; gap: 8px; max-width: 350px; margin: 20px 0; }
+.demo-pack-select select { padding: 12px; border: 1px solid #cdd6c7; border-radius: 8px; background: white; color: #26352c; }
+.demo-download { display: inline-flex; margin: 12px 0 20px; }
+.demo-scenarios { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+.demo-scenario { border: 1px solid #dfe5d7; border-radius: 10px; padding: 18px; min-width: 0; }
+.demo-scenario a { display: block; font-weight: 600; margin: 10px 0; overflow-wrap: anywhere; color: #234b3c; }
+.demo-legend { display: grid; grid-template-columns: minmax(130px, 0.35fr) 1fr; gap: 14px 24px; }
+.demo-legend dt { font-weight: 600; }
+.demo-legend dd { margin: 0; }
+@media (max-width: 620px) {
+  .demo-scenarios, .demo-legend { grid-template-columns: 1fr; }
+  .demo-legend { gap: 8px; }
+  .demo-legend dd { margin-bottom: 12px; }
+  .mobile-nav .nav-item { min-width: 0; padding-left: 4px; padding-right: 4px; gap: 4px; font-size: 11px; }
 }

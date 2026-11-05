@@ -141,7 +141,7 @@ export function uploadError(file) {
 export function parseRoute(hash) {
   const raw = String(hash || "").replace(/^#/, "");
   const [part, id] = raw.split("/");
-  const page = ["dashboard", "upload", "invoices"].includes(part)
+  const page = ["dashboard", "upload", "invoices", "guide"].includes(part)
     ? part
     : "upload";
   return {
@@ -179,6 +179,12 @@ export function filterInvoices(
 }
 export function decisionSummary(data) {
   if (data.acceptance) return "Acceptance is recorded.";
+  const providerErrors = {
+    EXTRACTION_PROVIDER_BUSY: "The extraction service is temporarily busy. One retry was attempted; no invoice was accepted. Try again later.",
+    EXTRACTION_RATE_LIMITED: "The extraction service has reached its request limit. One retry was attempted; no invoice was accepted. Try again when capacity is available.",
+    EXTRACTION_TIMEOUT: "The extraction service timed out after one retry. No invoice was accepted. You can rerun verification.",
+  };
+  if (providerErrors[data.run?.error_code]) return providerErrors[data.run.error_code];
   const failed = (data.validation?.checks || [])
     .filter((c) => c.status !== "pass")
     .map((c) => CHECKS.find(([code]) => code === c.code)?.[1] || human(c.code));

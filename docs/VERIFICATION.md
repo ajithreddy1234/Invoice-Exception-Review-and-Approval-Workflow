@@ -2,9 +2,9 @@
 
 Release checks on 5 November 2026 (India time):
 
-- Python components: 214 tests plus 37 subtests passed. Native tests are skipped
+- Python components: 231 tests plus 37 subtests passed. Native tests are skipped
   in this command and executed separately.
-- Isolated native Postgres: 36 tests passed after a clean dependency install.
+- Isolated native Postgres: 38 tests passed after a clean dependency install.
   Real separate DB connections exercise financial locks, uniqueness, rollback,
   correction/review permissions and publication recovery; providers are simulated.
 - The existing frontend's 12 tests and production build passed in Step 4. The
@@ -34,3 +34,5 @@ Free hosts sleep, model availability/quotas can change, English OCR can be
 uncertain, and references can expire. Held/failed processing does not become an
 acceptance. There is no forced financial approval, payment, guessed total,
 destructive demo reset, retained output-invoice PDF or fixture-output shortcut.
+
+Fresh-pack tests also cover independent identities, exact within-pack duplicates, cross-pack ambiguous-PO isolation, authenticated sample downloads, immutable preparation conflicts, validation preservation and at-most-two provider attempts.

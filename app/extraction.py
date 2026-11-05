@@ -14,6 +14,8 @@ import shutil
 import subprocess
 import unicodedata
 import warnings
+import time
+import httpx
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, Literal
 
@@ -372,8 +374,8 @@ class GeminiExtractor:
         self._api_key = api_key
         self.model = model
 
-    def extract(self, document: DocumentText) -> InvoiceCandidate:
-        """Bounded, text-only API request. No retry that silently changes candidates.
+    def extract(self, document: DocumentText, *, on_retry=None) -> InvoiceCandidate:
+        """At most two text-only attempts, before any candidate/decision is saved.
 
         Pass native JSON Schema on its dedicated wire field: the legacy
         response_schema conversion can incorrectly snake-case additionalProperties.
@@ -386,18 +388,36 @@ class GeminiExtractor:
             from google import genai
             from google.genai import types
 
-            with genai.Client(api_key=self._api_key, http_options=types.HttpOptions(timeout=45_000)) as client:
-                response = client.models.generate_content(
-                    model=self.model,
-                    contents=text,
-                    config=types.GenerateContentConfig(
-                        system_instruction=_INSTRUCTIONS,
-                        temperature=0,
-                        response_mime_type="application/json",
-                        response_json_schema=generation_schema(),
-                        max_output_tokens=12_000,
-                    ),
-                )
+            # Disable SDK retries: the application owns one visible retry and its
+            # total budget. Do not multiply SDK and application retry counts.
+            with genai.Client(api_key=self._api_key, http_options=types.HttpOptions(
+                    timeout=45_000,retry_options={'attempts':1})) as client:
+                for attempt in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model=self.model, contents=text,
+                            config=types.GenerateContentConfig(
+                                system_instruction=_INSTRUCTIONS, temperature=0,
+                                response_mime_type="application/json",
+                                response_json_schema=generation_schema(), max_output_tokens=12_000))
+                        break
+                    except Exception as error:
+                        code=getattr(error,'code',None)
+                        timed_out=isinstance(error,(TimeoutError,httpx.TimeoutException))
+                        if code not in (429,503) and not timed_out:
+                            raise
+                        if attempt:
+                            failure='EXTRACTION_TIMEOUT' if timed_out else 'EXTRACTION_RATE_LIMITED' if code==429 else 'EXTRACTION_PROVIDER_BUSY'
+                            raise ExtractionError(failure) from error
+                        if on_retry is not None:
+                            on_retry()
+                        # Retry-After is honored only within this bounded delay.
+                        delay=2.0
+                        try:
+                            delay=min(5.0,max(0.0,float(error.response.headers.get('Retry-After',2))))
+                        except (AttributeError,ValueError,TypeError):
+                            pass
+                        time.sleep(delay)
                 if not response.text:
                     raise ExtractionError("EXTRACTION_EMPTY_RESPONSE")
                 return InvoiceCandidate.model_validate_json(response.text)

@@ -1,73 +1,85 @@
-# Five-minute invoice review demonstration
+# Five-minute evaluator demonstration
 
-Use synthetic documents only. Authentication is required. Share separately chosen
-demo Auth credentials with the recruiter; the DB password and provider keys are
-never demo login credentials. Dedicated `Recruiter Admin` and `Recruiter User`
-accounts have been provisioned separately from the owner's personal Auth users.
-Their credentials are supplied privately, never in the repository/source ZIP.
+App: https://asa-invoice-review.onrender.com
 
-## Before recording/interview
+Use the dedicated admin/user credentials supplied privately. Do not put passwords
+in the repository, sample ZIPs or recording. Open **Demo guide** after signing in
+for sample downloads, expected results and assumptions.
 
-- Open the actual deployment in advance; verify readiness and admin diagnostics.
-  Sync references if stale. Confirm Gemini free-tier quota and source availability.
-- Check the current ledger, pending publications and remaining PO balances.
-  Accepted invoices cannot be reused as a fresh acceptance. There is no destructive
-  reset button. Use existing accepted records when explaining prior success.
-- Pick one never-accepted fixture with an available matching PO for fresh extraction.
-  The app must validate it; fixture expected outcomes are never sent to Gemini.
-- Have both an admin and normal-user browser session available. Test permissions
-  separately; do not accidentally record real passwords/API keys.
-- Keep source PDFs open locally as a fallback explanation if a provider is down.
-  Label any previously processed example as historical, never as fresh extraction.
+## Prepare
 
-## Talk track
+Use pack B for rehearsal and reserve an unused pack for the evaluator. Pack C is
+provided separately for that purpose. Packs are shared across the workspace;
+check the live availability label before starting. Re-uploading an accepted file
+must be blocked. The system never deletes the ledger to make a demo appear fresh.
 
-| Time | Action and point to demonstrate |
-| --- | --- |
-| 0:00–0:30 | Sign in and open Upload. PDF/JPG/PNG, 5 MiB, three-page bound. |
-| 0:30–1:30 | Upload the selected fresh readable document. Show real stages, extracted source quotes and nine checks. Exact eligible invoices may auto-accept; the LLM proposes fields only. |
-| 1:30–2:10 | Open an accepted record and its immutable acceptance ID. Show publication status and its matching `AcceptedInvoices` report row. Acceptance is a DB transaction; Sheet publication can lag. |
-| 2:10–2:45 | Re-upload an already-accepted original (e.g. `happy_full.pdf`) and show duplicate protection without another acceptance/balance deduction. |
-| 2:45–3:45 | Open the blurred-total record or upload the scan. Compare its preview, missing/unsupported payable field and review checks. Admin records a request for a clearer source; never computes a payable total to fill a missing printed amount. |
-| 3:45–4:30 | Show an evidenced admin correction/PO choice on a reviewable original. Save creates another revision and reruns checks. Explicit admin acceptance is separate and unavailable while a check fails. |
-| 4:30–5:00 | Dashboard company bars, invoice list and partial PO balance. Explain DB authority, imported Sheet references, durable report retry and one deployment limitation. |
+Open the deployment in advance, check reference freshness, and allow any inactive
+service to start. Choose a prepared, unused pack and download its ZIP. The package
+contains seven synthetic PDFs and a scenario guide. Their expected results are
+instructions for the evaluator, never inputs to extraction or approval logic.
 
-Live model extraction can exceed the allocated minute. Show its running stage and
-continue with a clearly labelled historical record, then return to its real result.
-Never substitute fixture expected values or claim an unobserved success.
+## Demonstrate the process
 
-## Fixtures and current development ledger
-
-The existing development ledger has genuine synthetic acceptances: PO-FULL
-₹10,000, PO-PARTIAL ₹6,000 and PO-AMBIG-A ₹5,000, totalling ₹21,000 as verified
-in Step 4. A later successful hosted Beta demonstration adds ₹10,000 on PO-BETA;
-check the live verification report and dashboard before quoting current totals.
-No payment was executed.
-
-| File / record | Intended demonstration | Important dependency |
+| Order | File | What to show |
 | --- | --- | --- |
-| `happy_full.pdf` / existing accepted record | Happy-path evidence and report | Already accepted; new upload should be duplicate |
-| `split_6000.pdf` / existing acceptance | Partial PO consumption | Already uses ₹6,000 of PO-PARTIAL |
-| `split_4500.pdf` | Invoice exceeds the remaining ₹4,000 | Only holds for balance while remaining is below ₹4,500 |
-| `split_4000.pdf` | Remaining balance fits exactly | Accepting consumes the rest; one-time on this ledger |
-| `scan_blurred_total.pdf` | Unreadable printed payable stays unknown | No inferred/admin-invented total |
-| `ambiguous_no_po.pdf` / existing revision history | Ambiguous exact candidates, correction and explicit admin approval | Already accepted after review; use history rather than a second acceptance |
-| `vendor_unknown_name.pdf` | Unknown vendor → review | Printed PO cannot establish vendor identity |
-| `tax_mismatch.pdf` | Printed subtotal/tax/total disagree | Arithmetic failure must remain held |
-| `race_a_6000.pdf` + `race_b_6000.pdf` | Native concurrency proof | Fresh PO-RACE ₹10,000; one ₹6,000 acceptance, second cannot overspend |
+| 1 | `01_clean_invoice.pdf` | Real extraction, source quotes, all nine checks, automatic acceptance and separate spreadsheet publication status |
+| 2 | `02_duplicate_invoice.pdf` | Same source identity; blocked without another acceptance or balance deduction |
+| 3 | `03_partial_6000.pdf` | Accepts six of ten authorized hours; INR 4,000 remains |
+| 4 | `04_partial_over_4500.pdf` | Exceeds that remaining value/quantity; held without consuming balance |
+| 5 | `06_ambiguous_po.pdf` | No printed PO and two exact candidates within this pack; admin review is required |
+| 6 | `07_blurred_total.pdf` | Real OCR, unsupported payable total remains unknown; request a clearer source |
 
-Cross-format scan fixtures intentionally share an invoice identity. They are not
-independent fresh-acceptance scenarios. Accepting one makes the others duplicates.
+`05_partial_remainder_4000.pdf` is optional. Demonstrate the INR 4,500 hold first;
+accepting the final INR 4,000 consumes the remaining budget and changes later
+outcomes. Each pack's scan uses its own PO so the earlier clean acceptance does
+not mask source uncertainty with an already-consumed PO.
 
-## Evidence and limitations to state candidly
+Keep the recording to five minutes: orient/login, upload the clean PDF, show
+acceptance plus published report, demonstrate a duplicate and one or two review
+cases, then explain the dashboard and audit history. Clearly label historical
+records if using them while a live run finishes.
 
-The isolated native Postgres suite proves row locks, duplicate uniqueness and
-transaction rollback under real separate connections. External providers are
-simulated there; prior separate live-cloud results prove actual integrations.
-Run `npm run test:native-api` to reproduce native evidence without using cloud data.
+## Explain the decisions
 
-No email ingestion, output-invoice generation, payment, currency conversion,
-tenant isolation, destructive reset or extraction cache is implemented. Sources
-expire after seven days; hashes, extracted evidence and ledger history remain.
-Admin cannot bypass a failed financial/evidence check. Current supported OCR is
-English; quotas, free-host sleep and poor source quality can hold processing.
+The model proposes fields from page text. Deterministic checks decide eligibility;
+SQL locks the PO and rechecks source/reference freshness, duplicate identity and
+cumulative commitments. Postgres owns the financial ledger. Sheets supplies
+reference records and receives an acceptance report; its publication can retry
+without accepting again.
+
+Admin correction requires source quotes and a reason, preserves earlier revisions
+and reruns the same checks. Selecting an ambiguous PO is limited to exact matches.
+Explicit approval is a separate action. An admin cannot invent an unreadable
+total or bypass failed financial/evidence checks. Acceptance never executes payment.
+
+## If extraction is unavailable
+
+A transient 429/503/timeout is retried once with a visible stage. A second failure
+leaves the invoice unaccepted with a clear reason. Invalid candidate JSON, missing
+source fields and configuration/auth errors are not solved by repeated requests.
+There is no saved extraction cache or fixture-result shortcut. Allow real OCR and
+model processing to finish; do not present a prior result as fresh extraction.
+
+## Prepare a later pack
+
+An authorized operator can generate another pack (for example D), inspect the
+read-only preparation plan, then append/import its matching references:
+
+```sh
+.venv/bin/python tools/generate_fixtures.py --pack D
+.venv/bin/python scripts/prepare_demo.py --packs D
+.venv/bin/python scripts/prepare_demo.py --packs D --apply
+```
+
+Deploy the new assets so they appear in the guide. Existing conflicting codes are
+rejected. Matching rows are reused without duplicates; unchanged current references
+do not need a new version. No accepted records or report rows are reset.
+
+## State the limits
+
+Single workspace, synthetic samples, English OCR, PDF/JPEG/PNG, 5 MiB and at most
+three pages. Originals expire after seven days; extracted evidence, hashes and
+ledger/audit history remain. There is no payment, email delivery, generated output
+invoice, currency conversion or ERP integration. Host sleep and model quotas are
+deployment dependencies. The native tests reproduce concurrency/rollback evidence
+in an isolated local Postgres database without resetting cloud data.

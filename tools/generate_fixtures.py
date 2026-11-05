@@ -14,6 +14,8 @@ import hashlib
 import io
 import json
 import random
+import re
+from zipfile import ZipFile, ZIP_DEFLATED
 from dataclasses import asdict, dataclass, replace
 from decimal import Decimal, ROUND_HALF_UP
 from importlib.metadata import version
@@ -64,7 +66,7 @@ class Invoice:
 
 
 def read_rows(name: str) -> list[dict[str, str]]:
-    with (ROOT / 'sheets' / name).open(newline='') as stream:
+    with (ROOT / 'tests' / 'reference_data' / name).open(newline='') as stream:
         return list(csv.DictReader(stream))
 
 
@@ -414,10 +416,85 @@ def verify(output: Path, manifest: dict) -> None:
     (output/'VERIFICATION.md').write_text('# Fixture verification\n\n27 PDFs and 3 images generated and structurally checked. All 30 fixture IDs and paths are unique, and scenario sequences reference existing IDs. This is not an end-to-end extraction/decision result.\n\n'+'\n'.join(report)+'\n\nExact renamed duplicate has identical bytes; re-export and screenshot have different hashes. Scan PDFs contain images only, with no hidden text. Alias-only and unknown-name PDFs print neither a vendor code nor tax identifier, and use the printed vendor name in their author metadata. Scenario outcomes require the stated initial conditions; reset between independent branches.\n')
 
 
+def generate_demo_pack(output: Path, pack: str) -> dict:
+    """Independent, immutable demo budget; expected outcomes never enter PDFs."""
+    if not re.fullmatch(r'[A-Z][A-Z0-9]{0,11}', pack):
+        raise ValueError('Pack must be 1-12 uppercase letters/digits, starting with a letter')
+    if output.exists() and any(output.iterdir()):
+        raise ValueError('Output is not empty. Choose a new pack or an empty output directory.')
+    output.mkdir(parents=True, exist_ok=True)
+    vendors = {v['vendor_code']: v for v in read_rows('Vendors.csv')}
+    prefix = f'PO-DEMO-{pack}-'
+    descriptions = {
+        'FULL': f'Office support - demo {pack}',
+        'PARTIAL': f'Consulting services - demo {pack}',
+        'SCAN': f'Document support - demo {pack}',
+        'AMBIG-A': f'Website design - demo {pack}',
+        'AMBIG-B': f'Website design - demo {pack}',
+    }
+    pos, lines = [], []
+    for suffix, description in descriptions.items():
+        po = prefix + suffix
+        pos.append(dict(po_code=po, vendor_code='V-ACME', currency='INR',
+                        authorized_gross='10000.00', status='open',
+                        billing_mode='full' if suffix in ('FULL','SCAN') else 'partial'))
+        lines.append(dict(po_code=po, line_code='SERVICE', description=description,
+                          quantity='10.0000', unit='hour', unit_net='1000.00', tax_rate_percent='0.00'))
+    for name, rows in [('PurchaseOrders',pos),('POLines',lines)]:
+        with (output/(name+'.csv')).open('w', newline='') as stream:
+            writer=csv.DictWriter(stream,fieldnames=list(rows[0]));writer.writeheader();writer.writerows(rows)
+    base = Invoice(number=f'INV-DEMO-{pack}-FULL-01',po=prefix+'FULL',description=descriptions['FULL'])
+    partial = replace(base,number=f'INV-DEMO-{pack}-PART-01',po=prefix+'PARTIAL',
+                      description=descriptions['PARTIAL'],quantity='6',net='6000.00',total='6000.00')
+    fixtures=[]
+    def add(filename, invoice, outcome, prerequisite, title, data=None):
+        data = data if data is not None else make_pdf(invoice,vendors)
+        (output/filename).write_bytes(data)
+        fixtures.append(dict(file=filename,title=title,expected=outcome,prerequisite=prerequisite,
+                             sha256=digest(data),bytes=len(data),invoice_number=invoice.number,po_code=invoice.po))
+        return data
+    happy=add('01_clean_invoice.pdf',base,'Accepted when all nine checks pass','Use this first, with an unused pack.','Clean PDF')
+    add('02_duplicate_invoice.pdf',base,'Blocked duplicate','First accept 01_clean_invoice.pdf.','Duplicate',happy)
+    add('03_partial_6000.pdf',partial,'Accepted; INR 4,000 remains','Use before the two partial-billing checks below.','Partial invoice')
+    add('04_partial_over_4500.pdf',replace(partial,number=f'INV-DEMO-{pack}-PART-OVER',quantity='4.5',net='4500.00',total='4500.00'),
+        'Needs review; balance is insufficient','After 03_partial_6000.pdf, before 05_partial_remainder_4000.pdf.','Over the remaining balance')
+    add('05_partial_remainder_4000.pdf',replace(partial,number=f'INV-DEMO-{pack}-PART-FINAL',quantity='4',net='4000.00',total='4000.00'),
+        'Accepted if the remaining INR 4,000 is unused','Optional: use after demonstrating the INR 4,500 hold.','Remaining balance fits')
+    add('06_ambiguous_po.pdf',replace(base,number=f'INV-DEMO-{pack}-AMB-01',po=None,description=descriptions['AMBIG-A'],quantity='5',net='5000.00',total='5000.00'),
+        'Needs review; two exact PO candidates','No printed PO. Admin may choose an exact candidate, revalidate and explicitly accept.','Ambiguous purchase order')
+    scan_invoice=replace(base,number=f'INV-DEMO-{pack}-SCAN-01',po=prefix+'SCAN',description=descriptions['SCAN'])
+    scan=raster(make_pdf(scan_invoice,vendors),scanned=True)
+    box=(int(334*2),int((H-(TOTAL_Y+10))*2),int((W-49)*2),int((H-(TOTAL_Y-14))*2))
+    blurred=ImageEnhance.Contrast(scan.crop(box).filter(ImageFilter.GaussianBlur(12))).enhance(0.08)
+    scan.paste(blurred,box)
+    add('07_blurred_total.pdf',scan_invoice,'Needs review; printed payable is unreadable',
+        'Independent scan PO. Other visible amounts must not substitute for a printed payable.','Unreadable payable',image_pdf(scan))
+    manifest={'pack':pack,'synthetic':True,'generator_version':'demo-pack-v1','fixtures':fixtures,
+              'reference_rows':{'PurchaseOrders':pos,'POLines':lines}}
+    guide='# Demo pack '+pack+'\n\nSynthetic documents. No payments are executed. Follow the order below.\n\n'
+    guide+='Each acceptance consumes its PO budget. Reusing an accepted file must be blocked; prepare another pack for a fresh rehearsal. The original ledger is never reset.\n\n'
+    for f in fixtures:guide+=f"- {f['file']}: {f['expected']}. {f['prerequisite']}\n"
+    (output/'SCENARIOS.md').write_text(guide)
+    (output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+    for item in fixtures:
+        reader=PdfReader(output/item['file'])
+        assert len(reader.pages)==1
+        text=reader.pages[0].extract_text().strip()
+        assert not text if item['file']=='07_blurred_total.pdf' else item['invoice_number'] in text
+    assert fixtures[0]['sha256']==fixtures[1]['sha256']
+    assert len({f['invoice_number'] for f in fixtures})==6
+    with ZipFile(output/f'invoice-demo-{pack}.zip','w',ZIP_DEFLATED) as archive:
+        for filename in [f['file'] for f in fixtures]+['SCENARIOS.md','manifest.json']:
+            archive.write(output/filename,filename)
+    return manifest
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output-dir', type=Path, default=ROOT/'tests'/'fixtures')
+    parser.add_argument('--output-dir', type=Path)
+    parser.add_argument('--pack', help='Create a fresh demo pack, e.g. B, C or D; never reset an existing pack')
     args = parser.parse_args()
-    result = generate(args.output_dir.resolve())
-    print(json.dumps({'generated':len(result['fixtures']), 'pdfs':27, 'images':3,
-                      'output_dir':str(args.output_dir.resolve())}, indent=2))
+    target=args.output_dir or (ROOT/'app'/'demo_assets'/'packs'/args.pack if args.pack else ROOT/'tests'/'fixtures')
+    result = generate_demo_pack(target.resolve(),args.pack) if args.pack else generate(target.resolve())
+    print(json.dumps({'generated':len(result['fixtures']), 'pack':args.pack,
+                      'output_dir':str(target.resolve())}, indent=2))

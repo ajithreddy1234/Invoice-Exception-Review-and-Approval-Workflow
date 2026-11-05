@@ -1,84 +1,177 @@
 # ASA Invoice Review
 
-A working same-origin FastAPI + React invoice review app. Postgres is the acceptance ledger; Google Sheets supplies versioned reference data and receives accepted-invoice reports. Gemini proposes structured fields from extracted page text; evidence and deterministic business checks decide eligibility.
+Review invoice PDFs against procurement records maintained in Google Sheets.
+The app extracts fields with page/quote evidence, runs nine deterministic checks,
+and records eligible acceptances transactionally in Postgres. It does not execute
+payments.
 
-## Implemented
+[Open the application](https://asa-invoice-review.onrender.com) ·
+[Demo guide](docs/DEMO.md) · [Deployment](docs/DEPLOYMENT.md)
 
-The workspace opens on Upload, with Dashboard and Invoices navigation, a password eye, private page previews and evidenced admin correction/PO selection with immutable revisions. Correction never automatically accepts a document. No new migration is required beyond the existing schema and Step 3 migration.
+## Try the demo
 
-- Supabase password login, HttpOnly/SameSite=Strict cookies, exact-Origin checks, current database roles, user ownership and admin access. Reused HTTP/database connections avoid repeated remote handshakes; every transaction still sets the restricted role and verifies grants. Read-only page queries batch protocol setup and data together; write transactions keep the existing pre-execution grant guard.
-- Private PDF/JPEG/PNG intake (5 MiB, three pages), idempotent upload retries, durable processing leases, embedded text or isolated Tesseract OCR.
-- Field-level page/quote evidence and nine checks: required fields, vendor, PO, source evidence, duplicate, currency, arithmetic, line allocation and PO balance.
-- Atomic acceptance with reference/PO locks, unique invoice identity, cumulative quantity/balance rechecks and a durable publication task.
-- Idempotent Sheets publication to a permanently assigned report row, confirmed read-back and retry states separate from the acceptance decision.
-- Separate Dashboard, Upload and Invoices pages. Vendor accepted-value bars, currency/company filters, upload activity, review/duplicate/publication counts and admin-only PO balances use all ownership-visible records. The register shows the latest 200. Browser evidence, original download, live stages, decision/history and admin diagnostics/import/retry/reject. Admin acceptance requires eligible validation and cannot bypass failed checks.
-- Seven-day source-file expiry. Audit, extracted evidence, file hash and financial ledger records remain. Expired originals cannot be processed again from storage.
+Sign in with the dedicated admin or normal-user credentials supplied privately.
+The opening page is **Upload invoice**. Open **Samples & demo guide** to download
+an unused sample pack and see its scenario order, expected results and limitations.
 
-## Run an existing configured project
+Each pack has independent PO budgets and invoice identities. Accepting a sample
+consumes its budget; uploading it again must be blocked as a duplicate. An admin
+can prepare another pack without deleting previous records. Normal users see only
+their submissions; admins review all records and resolve eligible exceptions.
+
+## What it checks
+
+| Check | Responsibility |
+| --- | --- |
+| Required information | Critical source fields and supported dates/amounts |
+| Vendor | Exact approved legal name or configured alias |
+| Purchase order | Explicit matching PO or exact inferred candidates |
+| Source evidence | Quoted page text, printed payable amount, OCR uncertainty |
+| Duplicate | File hash and vendor/invoice identity |
+| Currency | Invoice, PO and configured currency rules agree |
+| Arithmetic | Subtotal, tax, total and evidenced rounding reconcile |
+| Line allocation | Source descriptions, units, quantities and prices match |
+| PO balance | Cumulative value and quantity stay within authorization |
+
+The four primary scenarios are duplicates, partial invoicing/overbilling,
+ambiguous PO matching and unreadable critical fields. Supporting tests cover tax,
+rounding, missing data, vendor aliases, concurrency and failure recovery.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Sheets[Google Sheets references] --> Import[Validated immutable snapshot]
+    Import --> DB[(Postgres)]
+    UI[React upload and review] --> API[FastAPI]
+    API --> Read[PDF text or Tesseract OCR]
+    Read --> Model[Gemini candidate fields]
+    Model --> Rules[Nine deterministic checks]
+    DB --> Rules
+    Rules --> Commit[Atomic SQL acceptance]
+    Commit --> DB
+    Commit --> Outbox[Durable report task]
+    Outbox --> Report[AcceptedInvoices Sheet report]
+```
+
+Postgres owns acceptances, duplicate identities and commitments. Google Sheets is
+reference data in and a report out; manual report edits cannot change balances.
+Acceptance locks the PO and rechecks source/reference freshness, duplicates and
+cumulative commitments. Publication uses a permanent acceptance ID, reserved row,
+read-back verification and safe retry. Decision and publication statuses differ.
+
+Supabase provides Auth, Postgres and private original storage. FastAPI serves the
+React build and durable processing/publication workers in one Docker service.
+The model receives page text only and proposes fields; it cannot approve invoices.
+Admin corrections preserve prior revisions, require a reason/evidence, rerun the
+checks and require a separate explicit acceptance. Failed checks cannot be bypassed.
+
+## Run locally
+
+Requires Python 3.12+, Node.js 22.12+ and English Tesseract on PATH.
 
 ```sh
-uv sync
+uv sync --frozen
 cd web
 npm ci
 npm run build
 cd ..
-.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open `http://127.0.0.1:8000`. Local `.env` must use this exact `APP_ORIGIN` and `COOKIE_SECURE=false`. Sign in using an app Auth user's email/password, not the database password. Login is required again when the access cookie expires; refresh-token rotation is outside this scope.
+Create `.env` from `.env.example` without overwriting private configuration. Supply
+project-specific Supabase, database, Sheets and Gemini settings. For local HTTP,
+use `APP_ORIGIN=http://127.0.0.1:8000` and `COOKIE_SECURE=false`.
 
-For new installations only, copy `.env.example` without overwriting an existing `.env`, fill private values locally and run the setup CLI. Apply `migrations/schema.sql`, then `migrations/step3.sql` as migration owner. Existing v1.1 databases require the documented upgrade to v1.2 before Step 3. The current development Supabase project already has both required migrations; do not recreate it. App transactions switch to the restricted `service_role`; the readiness gate refuses unsafe direct status-update privileges.
+For a new database, apply `migrations/schema.sql` then `migrations/step3.sql` as the
+migration owner. Provision Auth users and role profiles using the documented SQL
+template. Import `tests/reference_data/` into the corresponding Sheet tabs; the
+`AcceptedInvoices` tab is a report, never an approval/balance input. Use a private
+`invoice-originals` bucket with a 5,242,880-byte limit and PDF/JPEG/PNG allowlist.
 
 ```sh
 .venv/bin/python -m app.cli doctor --live
 .venv/bin/python -m app.cli import-sheet
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Use a private `invoice-originals` Storage bucket, 5,242,880-byte bucket limit and PDF/JPEG/PNG MIME allowlist. Store the Google service-account file in the project-owned `credentials/` folder. Neither secrets nor credentials are included in the source archive.
+Sign in with an Auth user's credentials, not the database password. The backend
+sets a restricted database role and refuses unsafe direct status-update grants.
+HTTP-only local cookies are not appropriate for remote deployment; remote origins
+require HTTPS and Secure cookies.
+
+## Prepare another demo pack
+
+```sh
+.venv/bin/python tools/generate_fixtures.py --pack D
+.venv/bin/python scripts/prepare_demo.py --packs D
+.venv/bin/python scripts/prepare_demo.py --packs D --apply
+```
+
+The first preparation command is a read-only plan. Applying appends matching PO
+and line rows, preserves existing references, verifies read-back and activates the
+normal validated import. Conflicting existing codes are rejected. Include the new
+assets in a deployment to make them downloadable in the app. Packs B and C are
+included. Never delete acceptances or rewrite report rows to rehearse.
 
 ## Verify
 
 ```sh
 .venv/bin/python -m pytest -q
-npm install
+npm ci
 npm run test:native-api
 cd web
 npm test
 npm run build
 ```
 
-The native runner creates and destroys an isolated local Postgres 16 cluster; it does not use the cloud database. The ordinary suite skips native tests, which are run by that separate runner. Native pipeline tests use simulated external providers and real PDF/OCR/database code. Separate live-cloud results accompany the delivery.
+The native runner creates/destroys an isolated local Postgres 16 cluster and does
+not use cloud data. It tests real locks, transactions and fixture PDF/OCR work;
+external providers are simulated. Separate live verification covers actual hosted
+password logins, extraction, private previews and Sheets publication.
 
-## Operations and limits
-
-- Source/reference uncertainty goes to review. An unreadable total stays unknown; it cannot be inferred from subtotal, tax or PO balance. Correct the underlying source or master data, then retry/re-upload. Admin can correct supported fields and select only among exact ambiguous PO candidates, then revalidate. A separate explicit approval is required. Requesting a clearer original is an in-app record; no email is sent.
-- Jobs and export tasks survive process restart. Expired leases can take five minutes to recover. Workers run inside the active web process; a sleeping host pauses progress until it resumes. Do not run an in-memory queue as the source of truth.
-- Invalid Sheet imports leave the last valid reference intact. Stale reference data pauses eligibility. Admin can import current data from the dashboard.
-- Do not insert/delete/sort report rows or overwrite assigned `AcceptedInvoices` cells. A conflicting row is held for reconciliation, never blindly overwritten. Fix the report row then retry publication. Report edits never change Postgres balances.
-- Uploaded data is untrusted input; extraction does not authenticate an invoice. English OCR, supported monetary/date formats and explicit vendor/currency rules are required. No email intake, output-invoice generation, payment execution or ERP integration.
-- Test acceptances in the development project are genuine ledger rows. Re-uploading their invoices correctly returns duplicate; no destructive reset is provided.
-
-## Deployment and submission
-
-The multi-stage Dockerfile builds React, installs Tesseract and serves UI/API/workers in one process. `render.yaml` lists environment variables, including the server-only Supabase secret. Configure the Google credential as a Render secret file at `/etc/secrets/Sheet_Service.json`; set the public HTTPS `APP_ORIGIN` and `COOKIE_SECURE=true`. Secrets remain outside the image and browser bundle.
-
-The app is deployed at [asa-invoice-review.onrender.com](https://asa-invoice-review.onrender.com) on Render Free in Singapore. Dedicated recruiter admin/user credentials are supplied privately. The repository contains the real application and reproducible tests; credentials are excluded.
-
-The Linux AMD64 image built successfully. A local container limited to 512 MiB and 1 CPU passed app/OCR/restart checks with a measured cgroup peak of about 247 MiB. This is not a measurement of Render's smaller Free CPU allocation or its unavailable free-plan memory metrics. Hosted password logins, cookie flags, role boundaries and the deployment smoke passed. A genuine 15-minute idle wake-up is a separate check, not claimed by the local restart rehearsal. See [deployment instructions](docs/DEPLOYMENT.md) and the [five-minute demo](docs/DEMO.md).
-
-The configured model was moved to free-tier Gemini 3.1 Flash-Lite after the 3.5 model returned transient HTTP 503 high-demand errors. Source evidence and all deterministic/SQL gates remain mandatory. Prompt revision `invoice-text-v2` explicitly distinguishes separately added tax, printed zero tax and explicitly inclusive wording; extraction revisions record the model and prompt version.
-
-The safe deployment probe makes no ledger writes:
+Python's canonical dependency lock is `uv.lock`. Docker installs its generated,
+hash-pinned runtime export, `requirements.txt`. Regenerate that export after a
+runtime dependency change:
 
 ```sh
-.venv/bin/python scripts/check_deployment.py http://127.0.0.1:8000 --output data/deployment-smoke.json
+uv export --frozen --no-dev --no-emit-project --format requirements-txt --output-file requirements.txt
 ```
 
-Create a source archive only after the credential audit passes. This excludes local credentials, runtime data, caches, dependencies and built assets, includes fixture-generation tools, and creates a SHA-256 manifest:
+## Failure handling and limits
+
+- One visible retry is allowed for transient Gemini 429/503/timeouts. SDK retries
+  are disabled, so attempts do not multiply. No retry is made for invalid candidate
+  JSON, configuration/auth errors or empty model output. A second transient failure
+  leaves the invoice unaccepted with a clear reason.
+- No extraction cache or fixture-result shortcut is used. Sample expectations
+  never enter model input. Fresh documents need live extraction capacity.
+- English OCR; PDF/JPEG/PNG; 5 MiB; at most three pages. No currency conversion,
+  payment, email intake/delivery, output-invoice generation or ERP integration.
+- Unreadable totals remain unknown; subtotal, tax or PO balance cannot substitute
+  for printed payable evidence. A clearer-source request is an in-app record.
+- Originals expire after seven days. Extracted evidence, hashes and ledger/audit
+  records remain. Expired sources cannot be approved through review.
+- References must be current. Invalid imports preserve the last valid version;
+  stale imports pause eligibility. An admin can sync references from the dashboard.
+- Durable jobs survive restarts. Expired leases can take five minutes to recover.
+  Workers pause while a sleeping host is inactive. There is no always-on guarantee.
+- Do not sort/delete assigned report rows or overwrite another acceptance's cells.
+  Conflicts require reconciliation; publication retries do not accept again.
+- This is a single-tenant prototype using synthetic demo data. Demo credentials
+  are private. Free-tier quotas and host wake-up delays remain deployment limits.
+
+## Deployment and release
+
+See [deployment instructions](docs/DEPLOYMENT.md). The Dockerfile builds React,
+installs Tesseract and serves UI/API/workers together. Configure server secrets in
+Render and the Google JSON as `/etc/secrets/Sheet_Service.json`; never in GitHub,
+client code or `VITE_` variables.
 
 ```sh
-.venv/bin/python scripts/release.py
+.venv/bin/python scripts/check_deployment.py https://asa-invoice-review.onrender.com --output data/hosted-smoke.json
 .venv/bin/python scripts/release.py --output ../outputs/invoice-review-release.zip
 ```
 
-The source repository contains synthetic fixtures only. Demo login passwords and provider credentials are supplied privately, never in this README. Free-tier hosting/model allowances can expire or throttle; this is a demonstration, not a production availability commitment.
+The source release includes a SHA-256 manifest and excludes real credentials,
+runtime data, dependencies and demo login passwords. The deployment probe makes
+no ledger writes; it is not a substitute for a fresh extraction test.

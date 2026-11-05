@@ -17,6 +17,7 @@ import {
 import { SourceViewer, ReviewEditor } from "./ReviewWorkbench.jsx";
 import "./styles.css";
 import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
+import DemoGuide from "./DemoGuide.jsx";
 
 const dateTime = (value) =>
   value
@@ -605,7 +606,7 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
                 activeRun(data) ? "activity-dot active" : "activity-dot"
               }
             />
-            <strong>{human(run.stage || run.state)}</strong>
+            <strong>{run.stage === "retrying_extraction" ? "Extraction service busy · retrying once" : human(run.stage || run.state)}</strong>
             <span>{human(run.state)}</span>
           </div>
         )}
@@ -1200,7 +1201,7 @@ function App() {
   const names = {
     dashboard: [
       "Dashboard",
-      "A clear view of invoices, companies and commitments.",
+      "A clear view of invoices, vendors and commitments.",
     ],
     upload: [
       "Upload invoice",
@@ -1210,11 +1211,13 @@ function App() {
       "Invoices",
       "Find an invoice and inspect its evidence and decision.",
     ],
+    guide: ["Demo guide", "Fresh sample invoices, expected results and practical limits."],
   };
   const navItems = [
     ["upload", "↑", "Upload invoice"],
     ["dashboard", "◫", "Dashboard"],
     ["invoices", "▤", "Invoices"],
+    ["guide", "?", "Demo guide"],
   ];
   const nav = (mobile = false) => (
     <nav
@@ -1253,7 +1256,7 @@ function App() {
             Procurement workspace
             <small>
               {user.role === "admin"
-                ? "Company-wide access"
+                ? "Workspace-wide access"
                 : "Your invoice workspace"}
             </small>
           </span>
@@ -1304,6 +1307,7 @@ function App() {
           </button>
         </header>
         <ErrorBox>{listError}</ErrorBox>
+        {page === "guide" && <DemoGuide request={request} onUpload={() => navigate("upload")} />}
         {page === "dashboard" && (
           <>
             <Dashboard
@@ -1321,6 +1325,7 @@ function App() {
         )}
         {page === "upload" && (
           <div className="upload-page">
+            <div className="notice demo-start"><strong>Testing the demo?</strong> Download a fresh sample pack and follow the scenario order. <button className="secondary compact" onClick={() => navigate("guide")}>Samples & demo guide</button></div>
             <Upload
               request={request}
               onUpload={(id) => {
@@ -1418,7 +1423,7 @@ function App() {
                   <h2>Invoice register</h2>
                   <p className="small-muted">
                     {workspace?.scope === "company"
-                      ? "All company uploads"
+                      ? "All workspace uploads"
                       : "Your uploads"}{" "}
                     · {visible.length} shown
                     {workspace?.total_count > workspace?.list_limit
@@ -1434,7 +1439,7 @@ function App() {
                 <input
                   aria-label="Search invoices"
                   type="search"
-                  placeholder="Search invoice, company, PO or filename…"
+                  placeholder="Search invoice, vendor, PO or filename…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -1474,7 +1479,7 @@ function App() {
                   <thead>
                     <tr>
                       <th>Invoice</th>
-                      <th>Company / vendor</th>
+                      <th>Vendor / supplier</th>
                       <th>Amount</th>
                       <th>Decision</th>
                       <th>Uploaded</th>

@@ -15,7 +15,7 @@ from .extraction import DocumentText, ExtractionError, GeminiExtractor, EXTRACTI
 from .publication import PublicationConflict, SheetsPublisher
 from .rules import evaluate
 
-PIPELINE_VERSION = 'invoice-v0.4.1'
+PIPELINE_VERSION = 'invoice-v0.5'
 
 
 def audit(conn, sid, event, actor=None, run=None, stage=None, details=None):
@@ -198,7 +198,8 @@ class Pipeline:
                 raise ExtractionError('SOURCE_HASH_MISMATCH')
             document = self.reader(data,s['mime_type'])
             self.stage(run,'extracting_fields')
-            candidate = self.extractor.extract(document)
+            candidate = (self.extractor.extract(document,on_retry=lambda:self.stage(run,'retrying_extraction'))
+                         if isinstance(self.extractor,GeminiExtractor) else self.extractor.extract(document))
             self.stage(run,'validating')
             with self.db.transaction() as c:
                 ref, ledger = reference_and_ledger(c,candidate,s['file_sha256'])

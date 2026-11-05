@@ -1,0 +1,168 @@
+{
+  "pack": "B",
+  "synthetic": true,
+  "generator_version": "demo-pack-v1",
+  "fixtures": [
+    {
+      "file": "01_clean_invoice.pdf",
+      "title": "Clean PDF",
+      "expected": "Accepted when all nine checks pass",
+      "prerequisite": "Use this first, with an unused pack.",
+      "sha256": "21071bb7f730eec46941a05975df2cae8a7fbf189fcec9efe17301406682492f",
+      "bytes": 2751,
+      "invoice_number": "INV-DEMO-B-FULL-01",
+      "po_code": "PO-DEMO-B-FULL"
+    },
+    {
+      "file": "02_duplicate_invoice.pdf",
+      "title": "Duplicate",
+      "expected": "Blocked duplicate",
+      "prerequisite": "First accept 01_clean_invoice.pdf.",
+      "sha256": "21071bb7f730eec46941a05975df2cae8a7fbf189fcec9efe17301406682492f",
+      "bytes": 2751,
+      "invoice_number": "INV-DEMO-B-FULL-01",
+      "po_code": "PO-DEMO-B-FULL"
+    },
+    {
+      "file": "03_partial_6000.pdf",
+      "title": "Partial invoice",
+      "expected": "Accepted; INR 4,000 remains",
+      "prerequisite": "Use before the two partial-billing checks below.",
+      "sha256": "c5224f06c0e8db2ec151779c866e50107fade9407e4a46a8a054d8d9e790d1c3",
+      "bytes": 2753,
+      "invoice_number": "INV-DEMO-B-PART-01",
+      "po_code": "PO-DEMO-B-PARTIAL"
+    },
+    {
+      "file": "04_partial_over_4500.pdf",
+      "title": "Over the remaining balance",
+      "expected": "Needs review; balance is insufficient",
+      "prerequisite": "After 03_partial_6000.pdf, before 05_partial_remainder_4000.pdf.",
+      "sha256": "25b73174ea9526c32b8e5971f773026dd0a28cb8e6e34c7af38f382ba5045cdc",
+      "bytes": 2761,
+      "invoice_number": "INV-DEMO-B-PART-OVER",
+      "po_code": "PO-DEMO-B-PARTIAL"
+    },
+    {
+      "file": "05_partial_remainder_4000.pdf",
+      "title": "Remaining balance fits",
+      "expected": "Accepted if the remaining INR 4,000 is unused",
+      "prerequisite": "Optional: use after demonstrating the INR 4,500 hold.",
+      "sha256": "272687d00a56694fce52785b22bca83b37d7bbbe1ef729038ac0b2b84e9aa31a",
+      "bytes": 2759,
+      "invoice_number": "INV-DEMO-B-PART-FINAL",
+      "po_code": "PO-DEMO-B-PARTIAL"
+    },
+    {
+      "file": "06_ambiguous_po.pdf",
+      "title": "Ambiguous purchase order",
+      "expected": "Needs review; two exact PO candidates",
+      "prerequisite": "No printed PO. Admin may choose an exact candidate, revalidate and explicitly accept.",
+      "sha256": "29b4401d9cb4556fa294078011c97fb853699a7b116ab06ae3fce54eebb256ac",
+      "bytes": 2718,
+      "invoice_number": "INV-DEMO-B-AMB-01",
+      "po_code": null
+    },
+    {
+      "file": "07_blurred_total.pdf",
+      "title": "Unreadable payable",
+      "expected": "Needs review; printed payable is unreadable",
+      "prerequisite": "Independent scan PO. Other visible amounts must not substitute for a printed payable.",
+      "sha256": "a6a6319b568bbfae42e54c964f921128d585b0c25ccff524cd31c466379a1e24",
+      "bytes": 118532,
+      "invoice_number": "INV-DEMO-B-SCAN-01",
+      "po_code": "PO-DEMO-B-SCAN"
+    }
+  ],
+  "reference_rows": {
+    "PurchaseOrders": [
+      {
+        "po_code": "PO-DEMO-B-FULL",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "full"
+      },
+      {
+        "po_code": "PO-DEMO-B-PARTIAL",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      },
+      {
+        "po_code": "PO-DEMO-B-SCAN",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "full"
+      },
+      {
+        "po_code": "PO-DEMO-B-AMBIG-A",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      },
+      {
+        "po_code": "PO-DEMO-B-AMBIG-B",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      }
+    ],
+    "POLines": [
+      {
+        "po_code": "PO-DEMO-B-FULL",
+        "line_code": "SERVICE",
+        "description": "Office support - demo B",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-B-PARTIAL",
+        "line_code": "SERVICE",
+        "description": "Consulting services - demo B",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-B-SCAN",
+        "line_code": "SERVICE",
+        "description": "Document support - demo B",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-B-AMBIG-A",
+        "line_code": "SERVICE",
+        "description": "Website design - demo B",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-B-AMBIG-B",
+        "line_code": "SERVICE",
+        "description": "Website design - demo B",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      }
+    ]
+  }
+}

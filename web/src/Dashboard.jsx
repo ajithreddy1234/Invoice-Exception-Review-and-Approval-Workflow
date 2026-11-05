@@ -6,9 +6,9 @@ export { money } from "./dashboard-model.js";
 export function CompanySelect({ vendors, value, onChange }) {
   return (
     <label className="toolbar-select">
-      Company / vendor
+      Vendor / supplier
       <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="all">All companies</option>
+        <option value="all">All vendors</option>
         {vendors.map((v) => (
           <option value={v.vendor_code} key={v.vendor_code}>
             {v.legal_name}
@@ -63,7 +63,7 @@ export default function Dashboard({
       <div className="dashboard-toolbar">
         <div>
           <span className="scope-tag">
-            {admin ? "Company-wide overview" : "Your invoice overview"}
+            {admin ? "Workspace overview" : "Your submissions"}
           </span>
           <p className="small-muted">
             Sheet vendors · accepted values from the ledger · all visible
@@ -98,7 +98,7 @@ export default function Dashboard({
         <article className="kpi-card">
           <span>Invoices</span>
           <strong>{v.invoice_count}</strong>
-          <small>Within selected company and currency</small>
+          <small>Within selected vendor and currency</small>
         </article>
         <article className="kpi-card">
           <span>Needs review</span>
@@ -117,9 +117,9 @@ export default function Dashboard({
         <section className="section-card company-chart">
           <div className="section-heading">
             <div>
-              <h2>Accepted value by company</h2>
+              <h2>Accepted invoice value by vendor</h2>
               <p className="small-muted">
-                {currency} · select a company to see its invoices
+                {currency} · select a vendor to see its invoices
               </p>
             </div>
             <span className="chart-key">
@@ -152,7 +152,7 @@ export default function Dashboard({
               </button>
             ))
           ) : (
-            <p className="muted">No companies in the imported reference yet.</p>
+            <p className="muted">No vendors in the imported reference yet.</p>
           )}
           <p className="chart-note">
             Only accepted ledger amounts count. Duplicates, rejected invoices
@@ -174,7 +174,7 @@ export default function Dashboard({
             </div>
           </div>
           <div className="attention-card">
-            <span className="attention-number green">
+            <span className="attention-number amber">
               {v.publication_pending_count}
             </span>
             <div>
@@ -229,7 +229,7 @@ export default function Dashboard({
           <div className="section-heading">
             <div>
               <h2>Decision overview</h2>
-              <p className="small-muted">Selected company and currency</p>
+              <p className="small-muted">Selected vendor and currency</p>
             </div>
           </div>
           <div className="decision-counts">
@@ -282,7 +282,7 @@ export default function Dashboard({
               <thead>
                 <tr>
                   <th>Purchase order</th>
-                  <th>Company</th>
+                  <th>Vendor</th>
                   <th>Authorized</th>
                   <th>Accepted</th>
                   <th>Remaining</th>
@@ -329,7 +329,7 @@ export default function Dashboard({
       )}
       <p className="dashboard-footnote">
         {admin
-          ? "Company-wide totals"
+          ? "Workspace totals"
           : "Only your uploaded invoices are included"}
         . Charts cover all visible records; the invoice list shows the latest{" "}
         {workspace.list_limit}. Updated{" "}
