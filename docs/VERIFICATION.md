@@ -2,7 +2,7 @@
 
 Release checks on 5 November 2026 (India time):
 
-- Python components: 236 tests plus 37 subtests passed. Native tests are skipped
+- Python components: 237 tests plus 37 subtests passed. Native tests are skipped
   in this command and executed separately.
 - Isolated native Postgres: 46 tests passed after a clean dependency install.
   Real separate DB connections exercise financial locks, uniqueness, rollback,
@@ -44,3 +44,5 @@ Postgres tests cover owner/model/prompt/reader/pipeline cache isolation, the
 seven-day expiry, hash verification before reuse and current-reference checks.
 A stale-reference read is explicitly simulated in its cache-gate test; native SQL
 financial/uniqueness/locking checks continue to run in the separate suite.
+
+Pool logging is sanitized before propagation: driver connection URI arguments and exception tracebacks are omitted. A regression test exercises a credential-bearing synthetic driver error.

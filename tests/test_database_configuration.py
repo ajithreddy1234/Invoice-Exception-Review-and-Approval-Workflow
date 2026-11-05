@@ -22,3 +22,16 @@ def test_database_password_is_encoded_once_without_changing_it(password):
 def test_invalid_template_is_rejected(template):
     with pytest.raises(ValueError):
         module.connection_uri(template, 'dummy')
+
+
+def test_pool_diagnostics_cannot_print_a_credential_bearing_driver_error(caplog):
+    import logging
+    import app.db
+    secret='postgresql://demo:never-log-this-password@db.example/test'
+    with caplog.at_level(logging.WARNING,logger='psycopg.pool'):
+        try:raise ValueError(secret)
+        except ValueError:
+            logging.getLogger('psycopg.pool').warning('error connecting: %s',secret,exc_info=True)
+    assert 'never-log-this-password' not in caplog.text
+    assert 'Database pool event; connection details omitted' in caplog.text
+    assert all(not r.args and not r.exc_info and not r.exc_text for r in caplog.records)

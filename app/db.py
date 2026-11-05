@@ -1,9 +1,23 @@
 from contextlib import contextmanager
+import logging
 from threading import Lock
 
 import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool, PoolClosed, PoolTimeout
+
+
+class _PoolLogFilter(logging.Filter):
+    def filter(self, record):
+        # Driver parse/connect exceptions can embed a complete connection URI.
+        # Keep the severity/event without forwarding arguments or tracebacks.
+        record.msg = 'Database pool event; connection details omitted'
+        record.args = ()
+        record.exc_info = record.exc_text = record.stack_info = None
+        return True
+
+
+logging.getLogger('psycopg.pool').addFilter(_PoolLogFilter())
 
 
 class DatabaseUnavailable(RuntimeError):
