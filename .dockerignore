@@ -1,0 +1,17 @@
+.env*
+.venv
+.git
+node_modules
+web/node_modules
+web/dist
+secrets
+credentials
+__pycache__
+.pytest_cache
+tests
+data
+tools
+docs
+work
+outputs
+

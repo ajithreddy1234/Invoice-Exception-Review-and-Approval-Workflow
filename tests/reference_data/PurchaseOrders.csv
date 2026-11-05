@@ -1,0 +1,9 @@
+po_code,vendor_code,currency,authorized_gross,status,billing_mode
+PO-PARTIAL,V-ACME,INR,10000.00,open,partial
+PO-FULL,V-ACME,INR,10000.00,open,full
+PO-AMBIG-A,V-ACME,INR,10000.00,open,partial
+PO-AMBIG-B,V-ACME,INR,10000.00,open,partial
+PO-TAX,V-ACME,INR,11800.00,open,full
+PO-BETA,V-BETA,INR,10000.00,open,partial
+PO-RACE,V-ACME,INR,10000.00,open,partial
+PO-HOLD,V-HOLD,INR,10000.00,open,full

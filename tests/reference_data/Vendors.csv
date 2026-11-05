@@ -1,0 +1,4 @@
+vendor_code,legal_name,approved,aliases_json,tax_registration_id
+V-ACME,Acme Services Pvt Ltd,TRUE,"[""Acme Services"", ""Acme""]",DEMO-TAX-ACME
+V-BETA,Beta Consulting Pvt Ltd,TRUE,"[""Beta Consulting"", ""Beta""]",DEMO-TAX-BETA
+V-HOLD,Hold Vendor Pvt Ltd,FALSE,[],DEMO-TAX-HOLD

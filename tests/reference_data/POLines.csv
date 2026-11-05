@@ -1,0 +1,9 @@
+po_code,line_code,description,quantity,unit,unit_net,tax_rate_percent
+PO-PARTIAL,SERVICE,Consulting services,10.0000,hour,1000.00,0.00
+PO-FULL,SERVICE,Office support package,10.0000,hour,1000.00,0.00
+PO-AMBIG-A,SERVICE,Website design milestones,10.0000,hour,1000.00,0.00
+PO-AMBIG-B,SERVICE,Website design milestones,10.0000,hour,1000.00,0.00
+PO-TAX,SERVICE,Tax advisory services,10.0000,hour,1000.00,18.00
+PO-BETA,SERVICE,Consulting services,10.0000,hour,1000.00,0.00
+PO-RACE,SERVICE,Load-test consulting services,10.0000,hour,1000.00,0.00
+PO-HOLD,SERVICE,Unapproved vendor services,10.0000,hour,1000.00,0.00

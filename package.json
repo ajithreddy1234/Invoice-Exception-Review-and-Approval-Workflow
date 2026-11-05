@@ -1,0 +1,8 @@
+{
+  "name": "invoice-review-native-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {"test:native-api": "node scripts/native-api.mjs"},
+  "devDependencies": {"embedded-postgres": "16.15.0-beta.19", "pg": "8.23.1"}
+}
+
