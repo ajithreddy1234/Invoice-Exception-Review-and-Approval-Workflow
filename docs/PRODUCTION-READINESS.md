@@ -55,6 +55,7 @@ Previously accepted records remain unchanged and still block duplicates.
 
 | Gate | Why it is legitimate | Required decision or implementation |
 | --- | --- | --- |
+| Approved model-data processing | Invoice text can contain confidential or personal information; text-only extraction still sends it to an external provider | Review the actual account/region terms and company data policy. Google's unpaid-service terms caution against submitting sensitive/confidential/personal information and allow data use/human review, with regional differences. Use an approved processing arrangement before live records. No billing/provider migration was authorized or performed. |
 | Approval authority and segregation of duties | One admin role is too broad where company policy requires independent review or high-value authorization | Obtain approval matrix, define value thresholds and requester/approver restrictions, then enforce those rules at acceptance and in role management. Do not invent financial limits. Current per-currency auto-accept on/off is not a complete approval matrix. |
 | Authorized reference changes | Sheet editor access is currently authority to change reference data; snapshot validation checks structure and existing commitments, not business authorization | Name procurement owners, restrict editor access, and add reviewed reference-change approval if required. Keep report tabs distinct from reference tabs. |
 | Buyer and receipt checks | A valid vendor/PO and arithmetic do not prove the right buyer was billed or goods/services were received | Add buyer legal entities/tax identifiers and receipt/service-approval data. Implement bill-to matching and two-/three-way matching according to actual process. Until then this is invoice/PO verification, not proof of delivery. |
@@ -71,6 +72,12 @@ backups exclude Storage objects:
 https://supabase.com/docs/guides/platform/backups . A zero-cost evaluation build
 is feasible; guaranteed company availability and recovery cannot be promised by
 this deployment.
+
+Google's current Gemini API terms (effective March 23, 2026), checked during this
+assessment: https://ai.google.dev/gemini-api/terms . Synthetic samples can keep
+this evaluation free; do not treat the current unpaid model configuration as an
+approved confidential processing channel. Local OCR does not change that the
+extracted page text is sent to Gemini.
 
 ## Improvements that depend on actual workflow
 
