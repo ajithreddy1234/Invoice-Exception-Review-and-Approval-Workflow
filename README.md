@@ -4,7 +4,7 @@ A working same-origin FastAPI + React invoice review app. Postgres is the accept
 
 ## Implemented
 
-Step 4 adds an upload-first workspace, scrolling/navigation fixes, a password eye, private page previews and evidenced admin correction/PO selection with immutable revisions. Correction never automatically accepts a document. No new migration is required beyond the existing schema and Step 3 migration.
+The workspace opens on Upload, with Dashboard and Invoices navigation, a password eye, private page previews and evidenced admin correction/PO selection with immutable revisions. Correction never automatically accepts a document. No new migration is required beyond the existing schema and Step 3 migration.
 
 - Supabase password login, HttpOnly/SameSite=Strict cookies, exact-Origin checks, current database roles, user ownership and admin access. Reused HTTP/database connections avoid repeated remote handshakes; every transaction still sets the restricted role and verifies grants. Read-only page queries batch protocol setup and data together; write transactions keep the existing pre-execution grant guard.
 - Private PDF/JPEG/PNG intake (5 MiB, three pages), idempotent upload retries, durable processing leases, embedded text or isolated Tesseract OCR.
@@ -62,7 +62,11 @@ The native runner creates and destroys an isolated local Postgres 16 cluster; it
 
 The multi-stage Dockerfile builds React, installs Tesseract and serves UI/API/workers in one process. `render.yaml` lists environment variables, including the server-only Supabase secret. Configure the Google credential as a Render secret file at `/etc/secrets/Sheet_Service.json`; set the public HTTPS `APP_ORIGIN` and `COOKIE_SECURE=true`. Secrets remain outside the image and browser bundle.
 
-The Linux AMD64 release image has now built successfully. Hosted deployment, constrained-memory/restart results and cold-start results must be assessed separately; a successful image build does not establish them. See [deployment instructions](docs/DEPLOYMENT.md) and the [five-minute demo](docs/DEMO.md).
+The app is deployed at [asa-invoice-review.onrender.com](https://asa-invoice-review.onrender.com) on Render Free in Singapore. Dedicated recruiter admin/user credentials are supplied privately. The repository contains the real application and reproducible tests; credentials are excluded.
+
+The Linux AMD64 image built successfully. A local container limited to 512 MiB and 1 CPU passed app/OCR/restart checks with a measured cgroup peak of about 247 MiB. This is not a measurement of Render's smaller Free CPU allocation or its unavailable free-plan memory metrics. Hosted password logins, cookie flags, role boundaries and the deployment smoke passed. A genuine 15-minute idle wake-up is a separate check, not claimed by the local restart rehearsal. See [deployment instructions](docs/DEPLOYMENT.md) and the [five-minute demo](docs/DEMO.md).
+
+The configured model was moved to free-tier Gemini 3.1 Flash-Lite after the 3.5 model returned transient HTTP 503 high-demand errors. Source evidence and all deterministic/SQL gates remain mandatory. Prompt revision `invoice-text-v2` explicitly distinguishes separately added tax, printed zero tax and explicitly inclusive wording; extraction revisions record the model and prompt version.
 
 The safe deployment probe makes no ledger writes:
 

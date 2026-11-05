@@ -73,7 +73,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
         if auth is None:
             await run_in_threadpool(app.state.auth.close)
 
-    app = FastAPI(title='ASA Invoice Review API', version='0.4.0', lifespan=lifespan,
+    app = FastAPI(title='ASA Invoice Review API', version='0.4.1', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db or Database(settings.database_url.get_secret_value())

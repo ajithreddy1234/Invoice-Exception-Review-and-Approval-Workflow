@@ -2,8 +2,9 @@
 
 Use synthetic documents only. Authentication is required. Share separately chosen
 demo Auth credentials with the recruiter; the DB password and provider keys are
-never demo login credentials. Existing setup currently uses the owner's two Auth
-users, so do not put their personal passwords in the README or public submission.
+never demo login credentials. Dedicated `Recruiter Admin` and `Recruiter User`
+accounts have been provisioned separately from the owner's personal Auth users.
+Their credentials are supplied privately, never in the repository/source ZIP.
 
 ## Before recording/interview
 
@@ -39,7 +40,9 @@ Never substitute fixture expected values or claim an unobserved success.
 
 The existing development ledger has genuine synthetic acceptances: PO-FULL
 ₹10,000, PO-PARTIAL ₹6,000 and PO-AMBIG-A ₹5,000, totalling ₹21,000 as verified
-in Step 4. Recheck live totals before use. No payment was executed.
+in Step 4. A later successful hosted Beta demonstration adds ₹10,000 on PO-BETA;
+check the live verification report and dashboard before quoting current totals.
+No payment was executed.
 
 | File / record | Intended demonstration | Important dependency |
 | --- | --- | --- |

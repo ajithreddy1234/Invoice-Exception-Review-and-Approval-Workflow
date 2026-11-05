@@ -11,11 +11,11 @@ from uuid import uuid4
 import psycopg
 from psycopg.types.json import Jsonb
 
-from .extraction import DocumentText, ExtractionError, GeminiExtractor
+from .extraction import DocumentText, ExtractionError, GeminiExtractor, EXTRACTION_PROMPT_VERSION
 from .publication import PublicationConflict, SheetsPublisher
 from .rules import evaluate
 
-PIPELINE_VERSION = 'invoice-v0.4'
+PIPELINE_VERSION = 'invoice-v0.4.1'
 
 
 def audit(conn, sid, event, actor=None, run=None, stage=None, details=None):
@@ -66,11 +66,13 @@ def reference_and_ledger(conn, candidate, file_hash):
 
 
 def save_validation(c, submission_id, run_id, candidate, document, reference, decision,
-                    *, actor_id=None, reason=None):
+                    *, actor_id=None, reason=None, extractor_metadata=None):
     """Append an immutable revision and frozen validation; caller owns locks."""
     revision = dict(decision.revision)
     revision['evidence'] = {**revision.get('evidence',{}), 'candidate':candidate.model_dump(mode='json'),
                             'document':document.model_dump(mode='json')}
+    if extractor_metadata is not None:
+        revision['evidence']['extractor'] = extractor_metadata
     revision_id=uuid4();validation_id=uuid4()
     number=c.execute('SELECT coalesce(max(revision_no),0)+1 AS n FROM app.invoice_revisions WHERE submission_id=%s',(submission_id,)).fetchone()['n']
     columns=['invoice_number','invoice_date','vendor_name','po_reference','currency','subtotal_net_minor','tax_minor','total_gross_minor','tax_presentation','line_items','evidence','unresolved_critical_fields']
@@ -215,7 +217,9 @@ class Pipeline:
                 if existing or current['status'] in ('rejected','blocked_duplicate','expired'):
                     c.execute("UPDATE app.processing_runs SET state='completed',stage=%s,finished_at=now(),lease_token=NULL,lease_until=NULL WHERE id=%s",(current['status'],run['id']))
                     return True
-                revision_id, validation_id = save_validation(c,s['id'],run['id'],candidate,document,ref,decision)
+                revision_id, validation_id = save_validation(c,s['id'],run['id'],candidate,document,ref,decision,
+                    extractor_metadata={'model_id':self.settings.gemini_model,
+                                        'prompt_version':EXTRACTION_PROMPT_VERSION})
                 state = 'needs_review'
                 if decision.verdict == 'eligible' and decision.acceptance_mode == 'automatic':
                     try:
