@@ -1,6 +1,24 @@
 # Verification and practical limits
 
-Release checks on 6 November 2026 (India time):
+Current v0.9.0 regression checks on 6 November 2026 (India time):
+
+- 260 component tests plus 37 subtests passed; 54 isolated-native tests are
+  skipped by this command and are run separately.
+- All 54 native Postgres 16 tests passed with real transactions, separate
+  connections and real fixture PDF/OCR reading. External provider calls are
+  simulated, not evidence of live Gemini availability.
+- 19 frontend tests and the production build passed. A temporary browser harness
+  using the actual register hook verified next/previous pages, stale in-flight
+  search suppression, error recovery and page reset across identities. The
+  harness used a simulated API and is removed from the source release.
+- New native cases prove incorrect PO-as-invoice identity cannot consume a
+  partial PO a second time, original corruption blocks download without changing
+  acceptance, queue limits remain atomic, expired work avoids provider calls,
+  and full-history search/pagination stays ownership-scoped past 200 records.
+
+Earlier v0.6–v0.8 infrastructure and live workflow observations follow. They are
+not new measurements of v0.9.0:
+
 
 - Python components: 242 tests plus 37 subtests passed. Native tests are skipped
   in this command and executed separately.

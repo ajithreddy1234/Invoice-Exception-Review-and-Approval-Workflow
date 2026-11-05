@@ -70,7 +70,7 @@ def synthetic(candidate, extra=""):
     for name in InvoiceCandidate.model_fields:
         value = getattr(candidate, name)
         if isinstance(value, CandidateField) and value.source:
-            quotes.append(value.source.quote)
+            quotes.append(("Invoice number: " if name == "invoice_number" else "") + value.source.quote)
     for line in candidate.line_items:
         for name in CandidateLine.model_fields:
             value = getattr(line, name)

@@ -96,7 +96,7 @@ class DocumentTests(unittest.TestCase):
 class EvidenceTests(unittest.TestCase):
     def doc(self, extra=""):
         return DocumentText(pages=[PageText(number=1, method="embedded", text=(
-            "Acme Services Pvt Ltd\nINV-1001\n2026-10-31\nPO-FULL\nINR\n"
+            "Acme Services Pvt Ltd\nInvoice number: INV-1001\n2026-10-31\nPO-FULL\nINR\n"
             "Subtotal INR 10,000.00\nTOTAL PAYABLE INR 10,000.00\n" + extra))])
 
     def test_unknown_layout_can_pass_with_actual_evidence(self):

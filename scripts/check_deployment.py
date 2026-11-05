@@ -53,7 +53,7 @@ def probe(base, timeout):
         for path in sorted(set(assets.paths)):
             asset = client.get(path)
             record('frontend_asset', asset.status_code == 200, asset=path, http_status=asset.status_code)
-        for path in ('/api/me', '/api/submissions', '/api/admin/health'):
+        for path in ('/api/me', '/api/submissions', '/api/invoices', '/api/admin/health'):
             protected = client.get(path)
             record('unauthenticated_access_denied', protected.status_code == 401,
                    endpoint=path, http_status=protected.status_code)

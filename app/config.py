@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     reference_ttl_hours: int = Field(default=24, ge=1, le=168)
     worker_enabled: bool = True
     storage_bucket: str = 'invoice-originals'
+    max_pending_per_user: int = Field(default=20, ge=1, le=10000)
+    max_pending_total: int = Field(default=100, ge=1, le=10000)
 
     @field_validator('app_origin')
     @classmethod

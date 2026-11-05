@@ -6,7 +6,8 @@ and records eligible acceptances transactionally in Postgres. It does not execut
 payments.
 
 [Open the application](https://asa-invoice-review.onrender.com) ·
-[Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md)
+[Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md) ·
+[Case-study and company readiness](docs/PRODUCTION-READINESS.md)
 
 ## Workspace access
 
@@ -37,6 +38,10 @@ from the server image. The application has no sample catalog or download API.
 | Arithmetic | Subtotal, tax, total and evidenced rounding reconcile |
 | Line allocation | Source descriptions, units, quantities and prices match |
 | PO balance | Cumulative value and quantity stay within authorization |
+
+The invoice register searches the complete authorized history on the server, with
+25-record pages. Filters and counts apply to the whole history; changing a filter
+starts a new page sequence. Normal users remain scoped to their own records.
 
 The four primary scenarios are duplicates, partial invoicing/overbilling,
 ambiguous PO matching and unreadable critical fields. Supporting tests cover tax,
@@ -155,6 +160,16 @@ uv export --frozen --no-dev --no-emit-project --format requirements-txt --output
   revisions cannot seed or extend the cache. All nine checks and atomic acceptance
   use current references/commitments. Sample expectations never enter model input;
   fresh documents need live extraction capacity.
+- Pending work defaults to 20 live submissions per uploader and 100 per workspace.
+  `MAX_PENDING_PER_USER` and `MAX_PENDING_TOTAL` configure these bounds; capacity
+  reservations are serialized in Postgres. A full queue returns 429 with a retry
+  hint. This is not a general HTTP rate limiter or provider quota guarantee.
+- Invoice identity needs a labelled invoice/bill-number field. OCR retains word
+  coordinates for adjacent/stacked values; conflicting IDs, uncertain labels and
+  unsupported layouts go to review. This deliberately favors false holds over
+  accepting a PO/customer reference as invoice identity.
+- Originals are hash-verified before both processing and download. Expired queued
+  sources stop before storage/OCR/model work.
 - English OCR; PDF/JPEG/PNG; 5 MiB; at most three pages. No currency conversion,
   payment, email intake/delivery, output-invoice generation or ERP integration.
 - Unreadable totals remain unknown; subtotal, tax or PO balance cannot substitute

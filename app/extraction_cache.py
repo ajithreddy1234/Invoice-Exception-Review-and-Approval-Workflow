@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from .extraction import DocumentText, InvoiceCandidate, EXTRACTION_PROMPT_VERSION
 
-READER_VERSION = 'invoice-document-v1'
+READER_VERSION = 'invoice-document-v2'
 
 
 def extraction_metadata(settings, source_revision_id=None):

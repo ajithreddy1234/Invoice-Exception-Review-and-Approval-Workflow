@@ -21,6 +21,7 @@ from .storage import StorageGateway
 from .processing import Pipeline, Workers
 from .invoice_api import router as invoice_router, UploadLimit
 from .workspace import router as workspace_router
+from .register import router as register_router
 from .review import router as review_router
 
 log = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
             if auth is None:
                 await run_in_threadpool(app.state.auth.close)
 
-    app = FastAPI(title='Invoice Review API', version='0.8.0', lifespan=lifespan,
+    app = FastAPI(title='Invoice Review API', version='0.9.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db or Database(settings.database_url.get_secret_value())
@@ -256,6 +257,8 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
                   'startup_complete': app.state.startup_complete,
                   'workers_running': bool(app.state.workers and app.state.workers.running)}
         result['worker_errors']=app.state.workers.errors if app.state.workers else None
+        result['capacity_limits']={'per_user':settings.max_pending_per_user,
+                                   'workspace':settings.max_pending_total}
         try:
             result['database'] = app.state.db.permission_gate()
             result['reference'] = reference_status(app.state.db)
@@ -277,6 +280,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
 
     app.include_router(invoice_router)
     app.include_router(workspace_router)
+    app.include_router(register_router)
     app.include_router(review_router)
     assets=Path(__file__).resolve().parents[1]/'web/dist/assets'
     if assets.is_dir():

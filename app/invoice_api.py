@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 from .auth import Actor, current_actor, require_admin
 from .extraction import MAX_BYTES
@@ -25,6 +25,20 @@ def require_pipeline(request):
         raise HTTPException(503,'PROCESSING_NOT_CONFIGURED')
 
 
+def require_capacity(c, actor_id, limits, exclude=None):
+    """Caller holds the intake advisory lock before reserving new pending work."""
+    pending=c.execute('''SELECT count(*) AS total,
+        count(*) FILTER(WHERE s.uploaded_by=%s) AS owned FROM app.submissions s
+        WHERE s.id IS DISTINCT FROM %s::uuid
+        AND s.document_deleted_at IS NULL AND s.document_expires_at>now()
+        AND (s.status IN ('received','processing') OR EXISTS(SELECT 1 FROM app.processing_runs r
+             WHERE r.submission_id=s.id AND r.state IN ('queued','running')))''',(actor_id,exclude)).fetchone()
+    if pending['owned']>=limits.max_pending_per_user:
+        raise HTTPException(429,'USER_PENDING_LIMIT_REACHED',headers={'Retry-After':'30'})
+    if pending['total']>=limits.max_pending_total:
+        raise HTTPException(429,'WORKSPACE_PENDING_LIMIT_REACHED',headers={'Retry-After':'30'})
+
+
 @router.post('/api/submissions',status_code=202)
 def upload(request: Request, file: UploadFile = File(...), request_key: UUID = Form(...), actor: Actor = Depends(current_actor)):
     require_pipeline(request)
@@ -41,16 +55,20 @@ def upload(request: Request, file: UploadFile = File(...), request_key: UUID = F
     key=f'{actor.id}/{sid}/{digest}.{ext}'
     filename=(file.filename or 'invoice').replace('\\','/').rsplit('/',1)[-1][:180]
     with request.app.state.db.transaction() as c:
-        row=c.execute('''INSERT INTO app.submissions(id,uploaded_by,request_key,original_filename,mime_type,file_sha256,byte_size,storage_key)
-            VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(uploaded_by,request_key) DO NOTHING RETURNING *''',
-            (sid,actor.id,request_key,filename,mime,digest,len(data),key)).fetchone()
-        if not row:
-            row=c.execute('SELECT * FROM app.submissions WHERE uploaded_by=%s AND request_key=%s',(actor.id,request_key)).fetchone()
+        # Serialize only the short count/reservation transaction, never storage
+        # I/O. This also enforces capacity across processes/restarts.
+        c.execute('SELECT pg_advisory_xact_lock(1095975233,1)')
+        row=c.execute('SELECT * FROM app.submissions WHERE uploaded_by=%s AND request_key=%s',(actor.id,request_key)).fetchone()
+        if row:
             if row['file_sha256']!=digest:
                 raise HTTPException(409,'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_FILE')
             if row['status']!='received':
                 return {'id':str(row['id']),'status':row['status'],'idempotent_replay':True}
         else:
+            require_capacity(c,actor.id,request.app.state.settings)
+            row=c.execute('''INSERT INTO app.submissions(id,uploaded_by,request_key,original_filename,mime_type,file_sha256,byte_size,storage_key)
+                VALUES(%s,%s,%s,%s,%s,%s,%s,%s) RETURNING *''',
+                (sid,actor.id,request_key,filename,mime,digest,len(data),key)).fetchone()
             audit(c,row['id'],'submission.received',actor.id,details={'byte_size':len(data),'mime_type':mime})
     try:
         request.app.state.storage.upload(row['storage_key'],data,mime)
@@ -113,6 +131,8 @@ def document(sid: UUID,request: Request,actor: Actor = Depends(current_actor)):
         data=request.app.state.storage.download(s['storage_key'])
     except Exception:
         raise HTTPException(503,'SOURCE_DOCUMENT_UNAVAILABLE') from None
+    if sha256(data).hexdigest()!=s['file_sha256']:
+        raise HTTPException(409,'SOURCE_HASH_MISMATCH')
     return Response(content=data,media_type=s['mime_type'],headers={'Content-Disposition':'inline; filename="invoice.'+{'application/pdf':'pdf','image/jpeg':'jpg','image/png':'png'}[s['mime_type']]+'"'})
 
 
@@ -120,6 +140,7 @@ def document(sid: UUID,request: Request,actor: Actor = Depends(current_actor)):
 def retry(sid: UUID,request: Request,actor: Actor = Depends(current_actor)):
     require_pipeline(request)
     with request.app.state.db.transaction() as c:
+        c.execute('SELECT pg_advisory_xact_lock(1095975233,1)')
         s=owned(c,sid,actor,True)
         if s['status'] not in ('processing_failed','reference_hold','needs_review','received'):
             raise HTTPException(409,'SUBMISSION_CANNOT_BE_REPROCESSED')
@@ -128,12 +149,15 @@ def retry(sid: UUID,request: Request,actor: Actor = Depends(current_actor)):
         active=c.execute("SELECT id FROM app.processing_runs WHERE submission_id=%s AND state IN ('queued','running')",(sid,)).fetchone()
         if active:
             return {'id':str(sid),'run_id':str(active['id']),'status':s['status'],'idempotent_replay':True}
+        if s['status']!='received':
+            require_capacity(c,actor.id,request.app.state.settings,exclude=sid)
         r=c.execute('INSERT INTO app.processing_runs(submission_id,pipeline_version) VALUES(%s,%s) RETURNING id',(sid,PIPELINE_VERSION)).fetchone()
         audit(c,sid,'processing.retry_requested',actor.id,run=r['id'])
     return {'id':str(sid),'run_id':str(r['id']),'status':s['status']}
 
 
 class Reason(BaseModel):
+    model_config = ConfigDict(extra='forbid',str_strip_whitespace=True)
     reason: str = Field(min_length=5,max_length=1000)
 
 

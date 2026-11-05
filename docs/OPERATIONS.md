@@ -69,3 +69,21 @@ backup/restore testing and dependency/quota monitoring appropriate to the
 business, verify credential custody and replace evaluation identities/reference
 data through a separate controlled workspace setup. No paid resource, account
 permission or financial history is changed by this UI release.
+
+## Intake capacity and history
+
+`MAX_PENDING_PER_USER=20` and `MAX_PENDING_TOTAL=100` bound live pending work.
+Upload/retry reservation uses one short database advisory lock, released before
+Storage or provider I/O. An existing active request can be replayed safely while
+capacity is full. Completed/reviewed work frees capacity; queued retries consume
+it. Expired/deleted sources do not reserve capacity. Adjust defaults only against
+measured host/provider capacity. These settings do not impose general request or
+login rate limits. Admin diagnostics show configured bounds.
+
+The invoice register uses `/api/invoices` with status, vendor, literal search and
+a cursor. It reaches the complete authorized history; the dashboard's latest-200
+activity slice is not its data source. Pages sort by creation time and ID. New
+uploads appear on a refreshed first page without shifting older cursor pages.
+Status/reference changes can change a filtered result; pages are not a frozen
+accounting export. See [company readiness](PRODUCTION-READINESS.md) for the
+remaining business-policy and operational gates.

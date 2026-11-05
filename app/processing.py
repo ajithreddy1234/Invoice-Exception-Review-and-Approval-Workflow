@@ -16,7 +16,7 @@ from .publication import PublicationConflict, SheetsPublisher
 from .rules import evaluate
 from .extraction_cache import saved_extraction, extraction_metadata
 
-PIPELINE_VERSION = 'invoice-v0.6'
+PIPELINE_VERSION = 'invoice-v0.9'
 
 
 def audit(conn, sid, event, actor=None, run=None, stage=None, details=None):
@@ -180,6 +180,10 @@ class Pipeline:
                     return True
                 if s['status'] in ('rejected','blocked_duplicate','expired'):
                     c.execute("UPDATE app.processing_runs SET state='failed',stage='stopped',error_code='SUBMISSION_NOT_PROCESSABLE',lease_token=NULL,lease_until=NULL WHERE id=%s",(run['id'],))
+                    return True
+                if s['document_deleted_at'] or s['document_expires_at']<=datetime.now(timezone.utc):
+                    transition(c,s['id'],s['uploaded_by'],'expired','Original retention period ended before processing')
+                    c.execute("UPDATE app.processing_runs SET state='failed',stage='expired',error_code='SOURCE_DOCUMENT_EXPIRED',finished_at=now(),lease_token=NULL,lease_until=NULL WHERE id=%s",(run['id'],))
                     return True
                 if s['status'] != 'processing':
                     transition(c,s['id'],s['uploaded_by'],'processing')

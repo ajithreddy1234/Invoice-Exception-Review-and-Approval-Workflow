@@ -4,7 +4,7 @@ from .auth import verified_user_id
 
 router = APIRouter()
 
-WORKSPACE_SQL = r'''
+INVOICE_SCOPE_SQL = r'''
 WITH actor AS MATERIALIZED (
  SELECT user_id,display_name,role FROM app.profiles WHERE user_id=%s AND enabled
 ), active AS (
@@ -40,7 +40,11 @@ WITH actor AS MATERIALIZED (
 ), named AS MATERIALIZED (
  SELECT s.*,coalesce(v.legal_name,s.printed_vendor_name,'Unmatched vendor') AS vendor_name
  FROM scoped s LEFT JOIN vendors v ON v.vendor_code=s.vendor_code
-), company AS (
+)
+'''
+
+WORKSPACE_SQL = INVOICE_SCOPE_SQL + r'''
+, company AS (
  SELECT vendor_code,currency,count(*) AS invoice_count,
    count(*) FILTER(WHERE status='accepted') AS accepted_count,
    count(*) FILTER(WHERE status IN ('needs_review','reference_hold')) AS review_count,

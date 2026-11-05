@@ -2665,3 +2665,7 @@ body {
   .logout-dialog { padding: 24px; }
 }
 @media (max-width: 360px) { .user-row strong { max-width: 40px; } }
+
+.register-pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 20px; margin-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.register-pagination > div { display: flex; gap: 10px; }
+.register-pagination button { min-height: 42px; }

@@ -110,6 +110,8 @@ export function readableError(
   fallback = "The request could not be completed.",
 ) {
   const detail = payload?.detail;
+  if (detail === "USER_PENDING_LIMIT_REACHED") return "Your pending-work limit has been reached. Wait for processing to finish, then try again.";
+  if (detail === "WORKSPACE_PENDING_LIMIT_REACHED") return "The workspace processing queue is full. Existing invoices are safe; try again after some work completes.";
   if (typeof detail === "string") return detail.replaceAll("_", " ");
   if (Array.isArray(detail))
     return detail.map((item) => item.msg || "Invalid input").join(". ");

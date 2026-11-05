@@ -10,7 +10,6 @@ import {
   publicationLabel,
   uploadError,
   parseRoute,
-  filterInvoices,
   decisionSummary,
 } from "./model.js";
 import { SourceViewer, ReviewEditor } from "./ReviewWorkbench.jsx";
@@ -19,6 +18,7 @@ import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
 import { apiRequest } from "./api.js";
 import BrandMark from "./BrandMark.jsx";
 import LogoutControl from "./LogoutControl.jsx";
+import { useInvoiceRegister } from "./useInvoiceRegister.js";
 
 const dateTime = (value) =>
   value
@@ -883,6 +883,7 @@ function AdminPanel({ request, onRefresh }) {
               </div>
             )}
           </div>
+          {health?.capacity_limits && <p className="small-muted">Pending-work limits: {health.capacity_limits.per_user} per user · {health.capacity_limits.workspace} for the workspace.</p>}
           {reference?.imported_at && (
             <p className="small-muted">
               Last imported {dateTime(reference.imported_at)}
@@ -1112,7 +1113,12 @@ function App() {
     loadDetail,
     loadWorkspace,
   ]);
+  const register = useInvoiceRegister({
+    enabled: Boolean(user && page === "invoices" && !selected),
+    request, user, status: filter, vendor: listVendor, search,
+  });
   const refresh = async () => {
+    register.refresh();
     await Promise.all([loadWorkspace(), loadDetail()]);
   };
   const openInvoices = (company = "all", status = "all") => {
@@ -1164,11 +1170,7 @@ function App() {
       />
     );
   const items = workspace?.items || [];
-  const visible = filterInvoices(items, {
-    status: filter,
-    vendor: listVendor,
-    search,
-  });
+  const visible = register.items;
   const names = {
     dashboard: [
       "Dashboard",
@@ -1385,16 +1387,15 @@ function App() {
                     {workspace?.scope === "company"
                       ? "All workspace uploads"
                       : "Your uploads"}{" "}
-                    · {visible.length} shown
-                    {workspace?.total_count > workspace?.list_limit
-                      ? ` of ${workspace.total_count} total (latest ${workspace.list_limit} loaded)`
-                      : ""}
+                    · {visible.length} shown{register.total !== null ? ` of ${register.total} matching` : ""}
+                    {register.loading ? " · Updating…" : ""}
                   </p>
                 </div>
                 <button className="primary" onClick={() => navigate("upload")}>
                   + Upload invoice
                 </button>
               </div>
+              <ErrorBox>{register.error}</ErrorBox>
               <div className="invoice-toolbar">
                 <input
                   aria-label="Search invoices"
@@ -1549,7 +1550,7 @@ function App() {
                   </button>
                 )}
                 {!visible.length &&
-                  (listLoading ? (
+                  (register.loading ? (
                     <p className="list-loading" role="status">
                       Loading invoices…
                     </p>
@@ -1565,6 +1566,13 @@ function App() {
                     </Empty>
                   ))}
               </div>
+              <nav className="register-pagination" aria-label="Invoice list pages">
+                <span className="small-muted">Page {register.page} · Search covers the full invoice history</span>
+                <div>
+                  <button className="secondary" disabled={register.loading || !register.hasPrevious} onClick={register.previous}>← Previous</button>
+                  <button className="secondary" disabled={register.loading || !register.hasNext} onClick={register.next}>Next →</button>
+                </div>
+              </nav>
             </section>
           ))}
         <footer className="workspace-footer">

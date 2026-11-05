@@ -838,3 +838,135 @@ def test_expired_original_cache_is_not_refreshed_by_copying_a_revision(system):
     system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN});system['pipeline'].process_once()
     assert state(system,sid)['revision']['evidence']['extractor']['origin']=='cache'
     assert len(system['extractor'].documents)==2
+
+
+def test_original_download_rejects_corruption_without_mutating_acceptance(system):
+    sid,_=upload(system);system['pipeline'].process_once()
+    assert state(system,sid)['acceptance']
+    key=next(iter(system['storage'].objects));system['storage'].objects[key]=b'%PDF-corrupted'
+    response=system['client'].get(f'/api/submissions/{sid}/document')
+    assert response.status_code==409 and response.json()['detail']=='SOURCE_HASH_MISMATCH'
+    assert state(system,sid)['submission']['status']=='accepted'
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==1
+
+
+def test_po_as_invoice_identity_cannot_bypass_duplicate_protection_on_reexport(system):
+    import io
+    from pypdf import PdfReader,PdfWriter
+    value=candidate('INV-PART-02','PO-PARTIAL','Consulting services','4','4000.00')
+    system['extractor'].candidate=value
+    sid,_=upload(system,'split_4000.pdf');system['pipeline'].process_once()
+    assert state(system,sid)['submission']['status']=='accepted'
+    writer=PdfWriter();writer.clone_document_from_reader(PdfReader(FIXTURES/'split_4000.pdf'));writer.add_metadata({'/Producer':'Another PDF exporter'})
+    output=io.BytesIO();writer.write(output)
+    value.invoice_number=field('PO-PARTIAL');system['extractor'].candidate=value
+    other,_=upload(system,data=output.getvalue(),display_name='reexport.pdf');system['pipeline'].process_once()
+    result=state(system,other)
+    assert result['submission']['status']=='needs_review' and result['acceptance'] is None
+    assert next(c for c in result['validation']['checks'] if c['code']=='source_evidence')['status']=='review'
+    assert scalar(system,'SELECT sum(amount_minor) FROM app.acceptances')==400000
+
+
+def test_pending_upload_limit_is_atomic_and_idempotent_replays_remain_available(system):
+    system['pipeline'].settings.max_pending_per_user=1
+    key=uuid4();sid,_=upload(system,request_key=key)
+    replay,_=upload(system,request_key=key);assert replay==sid
+    response=system['client'].post('/api/submissions',headers={'Origin':ORIGIN},data={'request_key':str(uuid4())},
+        files={'file':('another.pdf',(FIXTURES/'split_4000.pdf').read_bytes(),'application/pdf')})
+    assert response.status_code==429 and response.json()['detail']=='USER_PENDING_LIMIT_REACHED'
+    assert response.headers['retry-after']=='30'
+    assert scalar(system,'SELECT count(*) FROM app.submissions')==1
+    system['pipeline'].process_once()
+    upload(system,'split_4000.pdf')  # completed work frees the reservation
+
+
+def test_concurrent_actors_cannot_exceed_global_pending_capacity(system):
+    system['pipeline'].settings.max_pending_total=1
+    barrier=Barrier(2)
+    def send(token):
+        client=TestClient(system['client'].app);client.cookies.set(COOKIE,token)
+        barrier.wait(timeout=3)
+        try:return client.post('/api/submissions',headers={'Origin':ORIGIN},data={'request_key':str(uuid4())},
+            files={'file':('invoice.pdf',(FIXTURES/'happy_full.pdf').read_bytes(),'application/pdf')}).status_code
+        finally:client.close()
+    with ThreadPoolExecutor(max_workers=2) as pool:codes=list(pool.map(send,['user','other']))
+    assert sorted(codes)==[202,429]
+    assert scalar(system,'SELECT count(*) FROM app.submissions')==1
+    assert scalar(system,'SELECT count(*) FROM app.processing_runs')==1
+
+
+def test_reprocessing_cannot_bypass_pending_capacity_but_active_retry_is_idempotent(system):
+    system['pipeline'].settings.max_pending_per_user=1
+    system['extractor'].candidate=candidate('INV-SCAN-01');system['extractor'].candidate.total_gross=field(None)
+    review,_=upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once()
+    assert state(system,review)['submission']['status']=='needs_review'
+    upload(system,'happy_full.pdf')
+    response=system['client'].post(f'/api/submissions/{review}/retry',headers={'Origin':ORIGIN})
+    assert response.status_code==429
+    system['pipeline'].process_once()
+    first=system['client'].post(f'/api/submissions/{review}/retry',headers={'Origin':ORIGIN})
+    second=system['client'].post(f'/api/submissions/{review}/retry',headers={'Origin':ORIGIN})
+    assert first.status_code==202 and second.status_code==202 and first.json()['run_id']==second.json()['run_id']
+
+
+def test_expired_queued_work_does_not_call_storage_reader_or_provider(system):
+    sid,_=upload(system)
+    system['owner'].execute("UPDATE app.submissions SET document_expires_at=now()-interval '1 second' WHERE id=%s",(sid,));system['owner'].commit()
+    system['pipeline'].process_once();result=state(system,sid)
+    assert result['submission']['status']=='expired' and result['run']['error_code']=='SOURCE_DOCUMENT_EXPIRED'
+    assert not system['extractor'].documents and not system['reads'] and not system['storage'].downloads
+
+
+def test_register_search_and_keyset_pages_reach_history_beyond_workspace_limit(system):
+    import uuid
+    rows=[]
+    # A tied timestamp exercises the UUID tiebreaker. Only disposable local DB.
+    for i in range(225):
+        identifier=uuid.uuid4();rows.append((identifier,USER,uuid.uuid4(),f'historic-{i:03}.pdf',f'{i:064x}',datetime(2026,1,1,tzinfo=timezone.utc)))
+    with system['owner'].cursor() as c:
+        c.executemany("""INSERT INTO app.submissions(id,uploaded_by,request_key,original_filename,mime_type,file_sha256,byte_size,status,created_at)
+            VALUES(%s,%s,%s,%s,'application/pdf',%s,100,'processing_failed',%s)""",rows)
+    system['owner'].commit()
+    w=system['client'].get('/api/workspace').json();assert len(w['items'])==200 and w['total_count']==225
+    seen=[];cursor=None
+    while True:
+        response=system['client'].get('/api/invoices',params={'limit':40,**({'cursor':cursor} if cursor else {})})
+        assert response.status_code==200,response.text
+        body=response.json();assert body['total_count']==225
+        seen += [x['id'] for x in body['items']]
+        cursor=body['next_cursor']
+        if not cursor:break
+    assert len(seen)==225 and len(set(seen))==225
+    old_name=next(row[3] for row in rows if str(row[0]) not in {x['id'] for x in w['items']})
+    found=system['client'].get('/api/invoices',params={'search':old_name}).json()
+    assert found['total_count']==1 and found['items'][0]['original_filename']==old_name
+    system['client'].cookies.set(COOKIE,'other')
+    other=system['client'].get('/api/invoices').json();assert other['items']==[] and other['total_count']==0
+    system['client'].cookies.set(COOKIE,'admin')
+    assert system['client'].get('/api/invoices').json()['total_count']==225
+
+
+def test_register_filters_input_validation_and_disabled_access(system):
+    accepted,_=upload(system);system['pipeline'].process_once()
+    system['extractor'].candidate=candidate('INV-SCAN-01');system['extractor'].candidate.total_gross=field(None)
+    review,_=upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once()
+    def find(**params):
+        response=system['client'].get('/api/invoices',params=params)
+        assert response.status_code==200,response.text
+        return response.json()
+    assert [x['id'] for x in find(status='accepted',vendor='V-ACME')['items']]==[str(accepted)]
+    assert [x['id'] for x in find(status='review_queue')['items']]==[str(review)]
+    assert find(vendor='V-UNKNOWN')['total_count']==0
+    assert find(search='INV-1001')['total_count']==1
+    assert find(search='%')['total_count']==0  # literal search, not a SQL wildcard
+    first=find(limit=1);assert first['next_cursor']
+    newer,_=upload(system,'split_4000.pdf')
+    second=find(limit=1,cursor=first['next_cursor'])
+    assert len(second['items'])==1 and second['items'][0]['id']==str(accepted)
+    assert second['items'][0]['id']!=str(newer)  # new inserts do not displace an older page
+    for params in ({'limit':0},{'limit':101},{'cursor':'%%%bad'},{'status':'made_up'},{'search':'x'*201}):
+        assert system['client'].get('/api/invoices',params=params).status_code==422
+    system['owner'].execute('UPDATE app.profiles SET enabled=false WHERE user_id=%s',(USER,));system['owner'].commit()
+    try:assert system['client'].get('/api/invoices').status_code==403
+    finally:
+        system['owner'].execute('UPDATE app.profiles SET enabled=true WHERE user_id=%s',(USER,));system['owner'].commit()
