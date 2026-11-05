@@ -20,7 +20,10 @@ AcceptedInvoices tab is a report. Failed publication never reverses or repeats a
 acceptance. No payment instruction is created.
 
 Money is stored in integer minor units and quantities use decimal arithmetic.
-Remaining PO value is authorized gross less accepted gross. Review/rejection and
+Remaining PO value is authorized gross less accepted gross. This assumes the
+ledger contains all commitments for the PO; the synthetic evaluation begins with
+new POs. Existing company commitments require a reconciled opening import or
+a rollout restricted to new POs. Review/rejection and
 duplicates do not consume value. Acceptance is a transaction with PO locking and
 freshness, identity and balance rechecks. Line quantities are cumulative as well
 as monetary commitments. Full/partial billing and approved tolerances are explicit.
@@ -56,6 +59,7 @@ Previously accepted records remain unchanged and still block duplicates.
 | Gate | Why it is legitimate | Required decision or implementation |
 | --- | --- | --- |
 | Approved model-data processing | Invoice text can contain confidential or personal information; text-only extraction still sends it to an external provider | Review the actual account/region terms and company data policy. Google's unpaid-service terms caution against submitting sensitive/confidential/personal information and allow data use/human review, with regional differences. Use an approved processing arrangement before live records. No billing/provider migration was authorized or performed. |
+| Opening commitments and duplicate history | A company's existing POs may already have approved invoices outside this app; an empty local ledger cannot know their consumption | Start with genuinely new POs, or reconcile and import verified historical accepted invoices/opening commitments and duplicate identities before activating existing POs. The report tab must not silently become a second ledger. No opening financial entries were invented by this release. |
 | Approval authority and segregation of duties | One admin role is too broad where company policy requires independent review or high-value authorization | Obtain approval matrix, define value thresholds and requester/approver restrictions, then enforce those rules at acceptance and in role management. Do not invent financial limits. Current per-currency auto-accept on/off is not a complete approval matrix. |
 | Authorized reference changes | Sheet editor access is currently authority to change reference data; snapshot validation checks structure and existing commitments, not business authorization | Name procurement owners, restrict editor access, and add reviewed reference-change approval if required. Keep report tabs distinct from reference tabs. |
 | Buyer and receipt checks | A valid vendor/PO and arithmetic do not prove the right buyer was billed or goods/services were received | Add buyer legal entities/tax identifiers and receipt/service-approval data. Implement bill-to matching and two-/three-way matching according to actual process. Until then this is invoice/PO verification, not proof of delivery. |
