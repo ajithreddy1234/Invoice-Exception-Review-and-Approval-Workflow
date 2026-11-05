@@ -737,3 +737,105 @@ def test_private_preview_handles_pdf_images_ownership_and_retention(system):
     assert client.get(f'/api/submissions/{sid}/pages/1').status_code==200
     system['owner'].execute("UPDATE app.submissions SET document_expires_at=now()-interval '1 second' WHERE id=%s",(sid,));system['owner'].commit()
     assert client.get(f'/api/submissions/{sid}/pages/1').status_code==410
+
+
+def cached_review(system):
+    system['pipeline'].settings.gemini_model='native-test-model'
+    value=candidate('INV-SCAN-01');value.total_gross=field(None)
+    system['extractor'].candidate=value
+    sid,_=upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once()
+    assert state(system,sid)['submission']['status']=='needs_review'
+    return sid
+
+
+def test_saved_extraction_skips_provider_but_reruns_checks_and_keeps_blurred_total_unknown(system):
+    sid=cached_review(system)
+    before=state(system,sid);assert before['revision']['evidence']['extractor']['origin']=='provider'
+    retry=system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN});assert retry.status_code==202
+    system['extractor'].extract=lambda _:pytest.fail('cache hit must not invoke external extraction')
+    system['pipeline'].reader=lambda *_:pytest.fail('cache hit must not rerun OCR')
+    system['pipeline'].process_once();after=state(system,sid)
+    assert after['submission']['status']=='needs_review' and after['acceptance'] is None
+    assert after['revision']['evidence']['extractor']['origin']=='cache'
+    assert after['revision']['evidence']['extractor']['source_revision_id']==before['revision']['id']
+    assert after['revision']['evidence']['candidate']['total_gross']['value'] is None
+    assert after['validation']['id']!=before['validation']['id'] and len(after['validation']['checks'])==9
+    assert any(a['event_type']=='extraction.reused' for a in after['audit'])
+    assert len(system['reads'])==1 and len(system['extractor'].documents)==1
+
+
+def test_cached_candidate_is_checked_against_new_vendor_reference(system):
+    sid=cached_review(system);before=state(system,sid)
+    directory=Path(__file__).resolve().parent/'reference_data'
+    raw={p.stem:list(csv.reader(p.open())) for p in directory.glob('*.csv')}
+    approved=raw['Vendors'][0].index('approved')
+    for row in raw['Vendors'][1:]:
+        if row[0]=='V-ACME':row[approved]='FALSE'
+    with system['db'].transaction() as conn:new_version=import_reference(conn,parse_reference(raw),'new-vendor-state',str(ADMIN))
+    system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN})
+    system['pipeline'].process_once();after=state(system,sid)
+    assert after['revision']['evidence']['extractor']['origin']=='cache'
+    assert after['validation']['reference_version_id']==str(new_version)
+    assert next(c for c in before['validation']['checks'] if c['code']=='vendor_match')['status']=='pass'
+    assert next(c for c in after['validation']['checks'] if c['code']=='vendor_match')['status']!='pass'
+    assert after['acceptance'] is None
+
+
+def test_cache_is_scoped_to_uploader_and_model_version(system):
+    cached_review(system)
+    system['client'].cookies.set(COOKIE,'other')
+    upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once()
+    assert len(system['extractor'].documents)==2
+    system['client'].cookies.set(COOKIE,'user')
+    system['pipeline'].settings.gemini_model='changed-native-model'
+    sid,_=upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once()
+    assert state(system,sid)['revision']['evidence']['extractor']['origin']=='provider'
+    assert len(system['extractor'].documents)==3
+
+
+def test_cached_extraction_cannot_bypass_source_hash_or_stale_reference(system):
+    sid=cached_review(system)
+    # Simulate a stale read without altering the frozen reference header.
+    from app.processing import reference_and_ledger
+    def stale(*args):
+        ref,ledger=reference_and_ledger(*args);ref['fresh']=False;return ref,ledger
+    system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN})
+    with patch('app.processing.reference_and_ledger',side_effect=stale):
+        system['pipeline'].process_once()
+    after=state(system,sid)
+    assert after['submission']['status']=='reference_hold' and after['acceptance'] is None
+    assert len(system['extractor'].documents)==1
+    # A stored object must still match its file hash before looking up a cache.
+    system['storage'].objects[next(iter(system['storage'].objects))]=b'%PDF-corrupted'
+    system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN})
+    system['pipeline'].process_once();after=state(system,sid)
+    assert after['run']['error_code']=='SOURCE_HASH_MISMATCH'
+    assert after['acceptance'] is None
+
+
+@pytest.mark.parametrize('module,name,new_value',[
+    ('app.extraction_cache','READER_VERSION','changed-reader'),
+    ('app.extraction_cache','EXTRACTION_PROMPT_VERSION','changed-prompt'),
+    ('app.processing','PIPELINE_VERSION','changed-pipeline'),
+])
+def test_cache_version_changes_force_new_extraction(system,module,name,new_value):
+    cached_review(system)
+    with patch(f'{module}.{name}',new_value):
+        sid,_=upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once()
+    assert state(system,sid)['revision']['evidence']['extractor']['origin']=='provider'
+    assert len(system['extractor'].documents)==2
+
+
+def test_expired_original_cache_is_not_refreshed_by_copying_a_revision(system):
+    # Disposable local DB only: seed an old creation timestamp at INSERT, rather
+    # than disabling immutability or mutating an existing evidence row.
+    system['owner'].execute("ALTER TABLE app.invoice_revisions ALTER COLUMN created_at SET DEFAULT (now()-interval '8 days')");system['owner'].commit()
+    try:sid=cached_review(system)
+    finally:
+        system['owner'].execute('ALTER TABLE app.invoice_revisions ALTER COLUMN created_at SET DEFAULT now()');system['owner'].commit()
+    system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN});system['pipeline'].process_once()
+    assert state(system,sid)['revision']['evidence']['extractor']['origin']=='provider'
+    assert len(system['extractor'].documents)==2
+    system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN});system['pipeline'].process_once()
+    assert state(system,sid)['revision']['evidence']['extractor']['origin']=='cache'
+    assert len(system['extractor'].documents)==2

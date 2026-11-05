@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
+import asyncio
 import logging
+import time
 from pathlib import Path
 from uuid import UUID
 
@@ -23,6 +25,7 @@ from .review import router as review_router
 from .demo import router as demo_router
 
 log = logging.getLogger(__name__)
+STARTUP_RETRY_SECONDS = 10
 
 
 def reference_status(db):
@@ -52,29 +55,61 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
 
     @asynccontextmanager
     async def lifespan(app):
+        app.state.started_at = time.monotonic()
         app.state.startup = 'setup_required'
-        if settings.configured()['database']:
-            try:
-                await run_in_threadpool(app.state.db.permission_gate)
-                app.state.startup = 'database_verified'
-                if settings.auto_import_on_startup and settings.configured()['sheets']:
+        app.state.startup_complete = False
+        stop = asyncio.Event()
+
+        async def initialize():
+            if not settings.configured()['database']:
+                app.state.startup_complete = True
+                return
+            # Serve the UI/liveness immediately. A slow DB or Sheets request must
+            # not keep the HTTP listener behind the host's allocation page.
+            while not stop.is_set():
+                app.state.startup = 'checking_database'
+                try:
+                    await run_in_threadpool(app.state.db.permission_gate)
+                    break
+                except Exception:
+                    app.state.startup = 'dependency_check_failed'
+                    log.warning('Startup database check failed; retrying without logging credentials')
+                    try:
+                        await asyncio.wait_for(stop.wait(), timeout=STARTUP_RETRY_SECONDS)
+                    except TimeoutError:
+                        pass
+            if stop.is_set():
+                return
+            app.state.startup = 'database_verified'
+            if settings.auto_import_on_startup and settings.configured()['sheets']:
+                app.state.startup = 'syncing_reference'
+                try:
                     await run_in_threadpool(sync_reference, app)
                     app.state.startup = 'reference_imported'
-            except Exception:
-                # Fail closed, keep diagnostics usable, never log credential-bearing exception text.
-                app.state.startup = 'dependency_check_failed'
-                log.warning('Startup dependency check failed; see authenticated diagnostics')
-        if app.state.workers is not None:
-            app.state.workers.start()
-        yield
-        if app.state.workers is not None:
-            app.state.workers.stop()
-        if db is None:
-            await run_in_threadpool(app.state.db.close)
-        if auth is None:
-            await run_in_threadpool(app.state.auth.close)
+                except Exception:
+                    # A failed import preserves the last valid snapshot. Rules
+                    # and SQL still require it to be fresh for any acceptance.
+                    app.state.startup = 'reference_import_failed'
+                    log.warning('Startup reference import failed; previous reference preserved')
+            if not stop.is_set() and app.state.workers is not None:
+                app.state.workers.start()
+            app.state.startup_complete = True
 
-    app = FastAPI(title='ASA Invoice Review API', version='0.5.0', lifespan=lifespan,
+        task = asyncio.create_task(initialize())
+        try:
+            yield
+        finally:
+            stop.set()
+            # Join in-flight bounded startup I/O before closing its DB pool.
+            await task
+            if app.state.workers is not None:
+                app.state.workers.stop()
+            if db is None:
+                await run_in_threadpool(app.state.db.close)
+            if auth is None:
+                await run_in_threadpool(app.state.auth.close)
+
+    app = FastAPI(title='ASA Invoice Review API', version='0.6.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db or Database(settings.database_url.get_secret_value())
@@ -82,6 +117,8 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
     app.state.sheets = sheets or (SheetsGateway(settings.google_spreadsheet_id, settings.google_application_credentials)
                                  if settings.configured()['sheets'] else None)
     app.state.startup = 'not_started'
+    app.state.startup_complete = False
+    app.state.started_at = time.monotonic()
     configured = settings.configured()
     app.state.storage = storage or (StorageGateway(settings.supabase_url,settings.supabase_secret_key.get_secret_value(),settings.storage_bucket)
         if settings.supabase_url and settings.supabase_secret_key.get_secret_value() else None)
@@ -136,7 +173,8 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
 
     @app.get('/health/live')
     def live():
-        return {'status': 'alive', 'stage': 'invoice_processing'}
+        return {'status': 'alive', 'stage': 'invoice_processing', 'version': app.version,
+                'uptime_seconds': round(time.monotonic()-app.state.started_at, 3)}
 
     @app.get('/health/ready')
     def ready(response: Response):
@@ -144,6 +182,10 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
         if not configured['database'] or not configured['authentication'] or not configured['sheets']:
             response.status_code = 503
             return {'status': 'setup_required', 'configured': configured}
+        if not app.state.startup_complete:
+            response.status_code = 503
+            response.headers['Retry-After'] = '2'
+            return {'status': 'starting', 'stage': app.state.startup}
         try:
             app.state.db.permission_gate()
             state = reference_status(app.state.db)
@@ -152,7 +194,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
             return {'status': 'ready_for_backend_use' if ok else 'reference_required',
                     'reference_fresh': ok, 'gemini_configured': configured['gemini'],
                     'invoice_pipeline_complete': app.state.pipeline is not None,
-                    'workers_running': app.state.workers is not None}
+                    'workers_running': bool(app.state.workers and app.state.workers.running)}
         except Exception:
             response.status_code = 503
             return {'status': 'dependency_unavailable'}
@@ -206,7 +248,9 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
 
     @app.get('/api/admin/health')
     def diagnostics(actor: Actor = Depends(require_admin)):
-        result = {'configured': settings.configured(), 'startup': app.state.startup}
+        result = {'configured': settings.configured(), 'startup': app.state.startup,
+                  'startup_complete': app.state.startup_complete,
+                  'workers_running': bool(app.state.workers and app.state.workers.running)}
         result['worker_errors']=app.state.workers.errors if app.state.workers else None
         try:
             result['database'] = app.state.db.permission_gate()

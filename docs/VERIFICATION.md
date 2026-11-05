@@ -2,13 +2,13 @@
 
 Release checks on 5 November 2026 (India time):
 
-- Python components: 231 tests plus 37 subtests passed. Native tests are skipped
+- Python components: 236 tests plus 37 subtests passed. Native tests are skipped
   in this command and executed separately.
-- Isolated native Postgres: 38 tests passed after a clean dependency install.
+- Isolated native Postgres: 46 tests passed after a clean dependency install.
   Real separate DB connections exercise financial locks, uniqueness, rollback,
   correction/review permissions and publication recovery; providers are simulated.
-- The existing frontend's 12 tests and production build passed in Step 4. The
-  release Docker build independently rebuilt that same frontend on Linux.
+- Frontend: 18 tests and the current production build passed. Request-boundary
+  tests cover host HTML, bounded body reads and no automatic mutation replay.
 - A Linux AMD64 Docker image built with pinned Python/JS dependencies. A local
   512 MiB / 1 CPU container passed app/readiness/access checks, four PDF/JPEG/PNG
   OCR fixtures, and restart readiness. Cgroup peak: 259,416,064 bytes (247.4 MiB).
@@ -36,3 +36,11 @@ acceptance. There is no forced financial approval, payment, guessed total,
 destructive demo reset, retained output-invoice PDF or fixture-output shortcut.
 
 Fresh-pack tests also cover independent identities, exact within-pack duplicates, cross-pack ambiguous-PO isolation, authenticated sample downloads, immutable preparation conflicts, validation preservation and at-most-two provider attempts.
+
+Startup/reuse hardening verifies that delayed DB/Sheets initialization cannot
+block the HTTP listener, workers wait for the permission check, a DB outage can
+recover without redeployment and shutdown interrupts startup backoff. Real local
+Postgres tests cover owner/model/prompt/reader/pipeline cache isolation, the
+seven-day expiry, hash verification before reuse and current-reference checks.
+A stale-reference read is explicitly simulated in its cache-gate test; native SQL
+financial/uniqueness/locking checks continue to run in the separate suite.

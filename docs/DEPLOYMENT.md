@@ -36,8 +36,9 @@ Postgres and private originals stay in the existing Supabase project.
    absolute path above. This is required in addition to setting its path variable.
 7. Deploy, wait for a successful build/live instance, and correct `APP_ORIGIN` if
    Render assigned a different URL. Save and deploy environment changes.
-8. Keep the Supabase bucket private. Existing schema/Step 3 migration and two
-   Auth profiles already exist in the development project; do not reapply/reset.
+8. Keep the Supabase bucket private. For an existing deployment, preserve its ledger and profiles. For a new project,
+   apply `migrations/schema.sql`, then `migrations/step3.sql`, and provision the
+   dedicated Auth users/profiles before testing.
 
 `render.yaml` is an alternative Blueprint configuration. Its `sync: false`
 entries prompt for secrets on initial creation; the Google secret file still
@@ -88,3 +89,21 @@ must remain held rather than being approved from guessed data.
 Official references: [Docker builds](https://render.com/docs/docker),
 [environment variables and secret files](https://render.com/docs/configure-environment-variables),
 [Free instance limits](https://render.com/docs/free).
+
+## Interpreting the allocation/loading page
+
+Render's allocation page precedes application code while a sleeping Free instance
+starts. It cannot be restyled or disabled by React/FastAPI. Keeping Free hosting
+means retaining that occasional delay. The app now serves its UI before its
+bounded DB/Sheets initialization; processing workers wait for DB permission
+verification. Startup retry never grants broader permissions.
+
+Use `/health/live` for dependency-free version/uptime. `/health/ready` returns
+`starting` and `Retry-After: 2` during initialization, and reports reference
+freshness after it finishes. Inspect **Procurement & service health** as admin for
+worker/startup state. A configured key alone is not a successful provider probe.
+
+Existing immutable extraction evidence provides a seven-day cache for the same
+uploader/file/version; Render's ephemeral filesystem is not used for it. A source
+hash mismatch or current reference/financial failure still prevents acceptance.
+No migration or new environment variable is required for this release.

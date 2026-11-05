@@ -105,6 +105,7 @@ def boundary():
                       google_spreadsheet_id='demo_spreadsheet_id')
     app = create_app(config, db=db, auth=auth, sheets=sheets)
     with TestClient(app) as client:
+        wait_for_startup(app)
         yield app, client, db, auth, sheets
 
 
@@ -350,3 +351,105 @@ def test_non_json_login_provider_response_fails_safely(boundary):
     assert response.json() == {'detail': 'AUTH_RESPONSE_INVALID'}
     assert 'set-cookie' not in response.headers
     assert 'private' not in response.text
+
+
+def wait_for_startup(app, timeout=3):
+    import time
+    until=time.monotonic()+timeout
+    while not app.state.startup_complete and time.monotonic()<until:
+        time.sleep(0.005)
+    assert app.state.startup_complete
+
+
+def test_slow_database_cannot_block_http_listener_or_start_workers_early():
+    from threading import Event
+    import time
+    entered,release=Event(),Event()
+    db,auth=FakeDatabase(),FakeAuth()
+    def gate():
+        entered.set()
+        assert release.wait(4)
+        return {'restricted_role':'service_role'}
+    db.permission_gate=gate
+    app=create_app(settings(database_url='postgresql://not-real/',supabase_url='https://not-real.supabase.co',
+        supabase_publishable_key='public',google_application_credentials='/not-real/key.json',
+        google_spreadsheet_id='demo_spreadsheet_id'),db=db,auth=auth,sheets=MagicMock())
+    workers=MagicMock();workers.running=False;app.state.workers=workers
+    started=time.monotonic()
+    with TestClient(app) as client:
+        try:
+            assert time.monotonic()-started<1
+            assert entered.wait(1)
+            assert client.get('/').status_code==200
+            assert client.get('/health/live').status_code==200
+            response=client.get('/health/ready')
+            assert response.status_code==503 and response.json()['status']=='starting'
+            assert response.headers['retry-after']=='2'
+            workers.start.assert_not_called()
+        finally:release.set()
+        wait_for_startup(app)
+        workers.start.assert_called_once()
+    workers.stop.assert_called_once()
+
+
+def test_slow_sheet_import_cannot_block_login_page_and_failed_import_preserves_readiness():
+    from threading import Event
+    entered,release=Event(),Event()
+    db=FakeDatabase()
+    config=settings(database_url='postgresql://not-real/',supabase_url='https://not-real.supabase.co',
+        supabase_publishable_key='public',google_application_credentials='/not-real/key.json',
+        google_spreadsheet_id='demo_spreadsheet_id',auto_import_on_startup=True)
+    def slow_import(app):
+        entered.set()
+        assert release.wait(4)
+        raise RuntimeError('private-provider-details-must-not-be-returned')
+    app=create_app(config,db=db,auth=FakeAuth(),sheets=MagicMock())
+    with patch('app.main.sync_reference',side_effect=slow_import),TestClient(app) as client:
+        try:
+            assert entered.wait(1)
+            assert client.get('/').status_code==200
+            assert client.get('/health/live').status_code==200
+            assert client.get('/health/ready').status_code==503
+        finally:release.set()
+        wait_for_startup(app)
+        assert app.state.startup=='reference_import_failed'
+        assert client.get('/health/ready').status_code==200  # last valid snapshot remains current
+        db.reference['fresh']=False
+        assert client.get('/health/ready').status_code==503
+
+
+def test_shutdown_interrupts_database_startup_backoff_without_starting_workers():
+    from threading import Event
+    import time
+    failed=Event();db=FakeDatabase()
+    def gate():
+        failed.set();raise DatabaseUnavailable('private-connection-uri')
+    db.permission_gate=gate
+    app=create_app(settings(database_url='postgresql://not-real/'),db=db,auth=FakeAuth(),sheets=MagicMock())
+    workers=MagicMock();app.state.workers=workers
+    started=time.monotonic()
+    with TestClient(app) as client:
+        assert failed.wait(1)
+        assert client.get('/health/live').status_code==200
+    assert time.monotonic()-started<2
+    workers.start.assert_not_called()
+
+
+def test_database_recovers_without_a_redeploy_and_workers_start_once_after_permission_check():
+    import time
+    db=FakeDatabase();calls=[]
+    def gate():
+        calls.append(1)
+        if len(calls)<3:raise DatabaseUnavailable('private-connection-uri')
+        return {'restricted_role':'service_role'}
+    db.permission_gate=gate
+    app=create_app(settings(database_url='postgresql://not-real/'),db=db,auth=FakeAuth(),sheets=MagicMock())
+    workers=MagicMock();app.state.workers=workers
+    with patch('app.main.STARTUP_RETRY_SECONDS',0.01),TestClient(app) as client:
+        wait_for_startup(app)
+        assert len(calls)==3 and app.state.startup=='database_verified'
+        workers.start.assert_called_once()
+        response=client.get('/health/live')
+        assert response.json()['version']=='0.6.0'
+        assert 0<=response.json()['uptime_seconds']<3
+        assert 'private' not in response.text

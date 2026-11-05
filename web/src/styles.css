@@ -304,6 +304,7 @@ button:hover:not(:disabled) {
   flex-direction: column;
   gap: 20px;
 }
+.app-loading p { max-width: 400px; margin: 8px 0 0; font-size: 13px; line-height: 1.6; }
 .login-form h2 {
   font-size: 29px;
 }

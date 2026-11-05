@@ -78,7 +78,7 @@ export default function DemoGuide({ request, onUpload }) {
         <li>Original uploads are private and expire after seven days. Hashes, extracted evidence and the decision ledger remain.</li>
         <li>No payment, email delivery, generated output invoice or ERP integration. A clearer-document request is an in-app record.</li>
         <li>The service can pause when inactive. Allow it to start before testing; OCR/model work can take tens of seconds.</li>
-        <li>Live model requests are required. No saved extraction cache is used; unavailable dependencies hold processing.</li>
+        <li>A matching original extraction can be reused for seven days for the same uploader and identical file bytes. Reader, model, prompt and pipeline versions must match. The interface labels reuse; all approval checks run again. New files still need the live model.</li>
       </ul>
     </section>
   </div>;

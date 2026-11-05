@@ -8,7 +8,6 @@ import {
   fileDuplicateProof,
   human,
   publicationLabel,
-  readableError,
   uploadError,
   parseRoute,
   filterInvoices,
@@ -18,6 +17,7 @@ import { SourceViewer, ReviewEditor } from "./ReviewWorkbench.jsx";
 import "./styles.css";
 import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
 import DemoGuide from "./DemoGuide.jsx";
+import { apiRequest } from "./api.js";
 
 const dateTime = (value) =>
   value
@@ -208,6 +208,7 @@ function Login({ onLogin, initialError, request }) {
             Demo reviewers: use the credentials supplied with the submission.
             Access is assigned by an administrator.
           </p>
+          <p className="small-muted">This free demo can take about a minute to start after inactivity. Once this page opens, sign in normally.</p>
         </form>
       </section>
     </main>
@@ -610,6 +611,12 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
             <span>{human(run.state)}</span>
           </div>
         )}
+        {revision?.evidence?.extractor?.origin === "cache" && (
+          <div className="notice" role="status"><strong>Using saved extraction</strong><p>Identical source bytes and matching extractor versions. All nine checks were rerun against the current procurement snapshot and ledger.</p></div>
+        )}
+        {revision?.evidence?.extractor?.origin === "provider" && (
+          <p className="small-muted">Fresh extraction · source text read and sent to the extraction service for this revision.</p>
+        )}
         {publication?.last_error && (
           <div className="notice warning-note">
             Spreadsheet publication: {human(publication.last_error)}
@@ -842,6 +849,10 @@ function AdminPanel({ request, onRefresh }) {
             </p>
           )}
           <div className="health-grid">
+            {health && <>
+              <div className="health-item"><span>Startup checks</span><Badge value={health.startup_complete && health.startup !== "reference_import_failed" ? "pass" : "pending"}>{human(health.startup)}</Badge></div>
+              <div className="health-item"><span>Invoice workers</span><Badge value={health.workers_running && !Object.values(health.worker_errors || {}).some(Boolean) ? "pass" : "pending"}>{!health.workers_running ? "Starting or disabled" : Object.values(health.worker_errors || {}).some(Boolean) ? "Dependency retry pending" : "Running"}</Badge></div>
+            </>}
             {health?.configured &&
               Object.entries(health.configured).map(([key, value]) => (
                 <div className="health-item" key={key}>
@@ -979,42 +990,11 @@ function App() {
   };
   const request = useCallback(async (url, options = {}) => {
     const epoch = generation.current;
-    let response;
-    const controller = new AbortController();
-    const timer = setTimeout(
-      () => controller.abort(),
-      url.endsWith("/correct") ? 150000 : 30000,
-    );
     try {
-      response = await fetch(url, {
-        credentials: "same-origin",
-        ...options,
-        signal: controller.signal,
-        headers: {
-          ...(options.body && !(options.body instanceof FormData)
-            ? { "Content-Type": "application/json" }
-            : {}),
-          ...options.headers,
-        },
-      });
-    } catch (err) {
-      throw new Error(
-        err.name === "AbortError"
-          ? "The request timed out. Try again; an upload retry is safe."
-          : "Cannot reach the service. Check your connection and try again.",
-      );
-    } finally {
-      clearTimeout(timer);
-    }
-    let body;
-    try {
-      body = await response.json();
-    } catch {
-      body = {};
-    }
-    if (!response.ok) {
+      return await apiRequest(url, options);
+    } catch (error) {
       if (
-        response.status === 401 &&
+        error.status === 401 &&
         url !== "/api/auth/login" &&
         mounted.current &&
         epoch === generation.current
@@ -1025,13 +1005,8 @@ function App() {
         setSelectedState(null);
         selectedRef.current = null;
       }
-      const error = new Error(
-        readableError(body, `Request failed (${response.status}).`),
-      );
-      error.status = response.status;
       throw error;
     }
-    return body;
   }, []);
   const loadWorkspace = useCallback(() => {
     if (flight.current) return flight.current;
@@ -1169,7 +1144,7 @@ function App() {
   if (starting)
     return (
       <div className="app-loading" role="status">
-        <span className="brand-mark">I</span>Checking your session…
+        <span className="brand-mark">I</span><div><strong>Opening your workspace…</strong><p>If the free service was inactive, allow about a minute for it to start.</p></div>
       </div>
     );
   if (!user)

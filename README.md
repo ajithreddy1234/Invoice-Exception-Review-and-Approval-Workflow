@@ -143,8 +143,12 @@ uv export --frozen --no-dev --no-emit-project --format requirements-txt --output
   are disabled, so attempts do not multiply. No retry is made for invalid candidate
   JSON, configuration/auth errors or empty model output. A second transient failure
   leaves the invoice unaccepted with a clear reason.
-- No extraction cache or fixture-result shortcut is used. Sample expectations
-  never enter model input. Fresh documents need live extraction capacity.
+- Extraction reuse is scoped to one uploader, exact file bytes/MIME/size and
+  matching model, prompt, reader and pipeline versions. Only original provider
+  evidence from the last seven days is eligible. Copied or admin-corrected
+  revisions cannot seed or extend the cache. All nine checks and atomic acceptance
+  use current references/commitments. Sample expectations never enter model input;
+  fresh documents need live extraction capacity.
 - English OCR; PDF/JPEG/PNG; 5 MiB; at most three pages. No currency conversion,
   payment, email intake/delivery, output-invoice generation or ERP integration.
 - Unreadable totals remain unknown; subtotal, tax or PO balance cannot substitute
@@ -175,3 +179,26 @@ client code or `VITE_` variables.
 The source release includes a SHA-256 manifest and excludes real credentials,
 runtime data, dependencies and demo login passwords. The deployment probe makes
 no ledger writes; it is not a substitute for a fresh extraction test.
+
+## Startup and repeated processing
+
+The HTTP listener, UI and liveness endpoint start without waiting for database or
+Sheets network calls. Startup verifies restricted DB permissions before starting
+workers; an unavailable DB is retried in the background. Readiness returns 503
+with `Retry-After` until initialization finishes. If the Sheet import fails, the
+last valid snapshot is preserved; normal freshness checks still govern decisions.
+Admin diagnostics distinguish configured keys, actual worker state and startup
+status. `/health/live` exposes version/uptime without dependency calls.
+
+An identical, previously reviewed upload may show **Using saved extraction**.
+The source object is downloaded and its SHA-256 verified before reuse. The cache
+uses existing immutable evidence revisions, so no new table, paid service or
+local-disk persistence is needed. Evidence validation and all financial checks are
+rerun; no acceptance decision is cached. Already accepted bytes are still blocked
+as duplicates before any extraction work. New files require live extraction.
+
+Render Free still sleeps after 15 minutes without traffic and can display its own
+allocation screen while waking. Application code cannot replace that host page.
+Open the app in advance of a demonstration. No paid upgrade or keep-alive job is
+installed. Host HTML responses are treated as unavailable, never as successful
+API results, and the client does not automatically replay writes.

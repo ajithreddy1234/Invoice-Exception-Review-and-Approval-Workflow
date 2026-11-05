@@ -11,11 +11,12 @@ from uuid import uuid4
 import psycopg
 from psycopg.types.json import Jsonb
 
-from .extraction import DocumentText, ExtractionError, GeminiExtractor, EXTRACTION_PROMPT_VERSION
+from .extraction import DocumentText, ExtractionError, GeminiExtractor
 from .publication import PublicationConflict, SheetsPublisher
 from .rules import evaluate
+from .extraction_cache import saved_extraction, extraction_metadata
 
-PIPELINE_VERSION = 'invoice-v0.5'
+PIPELINE_VERSION = 'invoice-v0.6'
 
 
 def audit(conn, sid, event, actor=None, run=None, stage=None, details=None):
@@ -196,10 +197,22 @@ class Pipeline:
             data = self.storage.download(s['storage_key'])
             if sha256(data).hexdigest() != s['file_sha256']:
                 raise ExtractionError('SOURCE_HASH_MISMATCH')
-            document = self.reader(data,s['mime_type'])
-            self.stage(run,'extracting_fields')
-            candidate = (self.extractor.extract(document,on_retry=lambda:self.stage(run,'retrying_extraction'))
-                         if isinstance(self.extractor,GeminiExtractor) else self.extractor.extract(document))
+            cached = saved_extraction(self.db, s, self.settings, PIPELINE_VERSION)
+            if cached is None:
+                document = self.reader(data,s['mime_type'])
+                self.stage(run,'extracting_fields')
+                candidate = (self.extractor.extract(document,on_retry=lambda:self.stage(run,'retrying_extraction'))
+                             if isinstance(self.extractor,GeminiExtractor) else self.extractor.extract(document))
+                metadata = extraction_metadata(self.settings)
+            else:
+                document,candidate,source_revision_id = cached
+                metadata = extraction_metadata(self.settings, source_revision_id)
+                self.stage(run,'using_saved_extraction')
+                with self.db.transaction() as c:
+                    if not self.fence(c,run):
+                        return True
+                    audit(c,s['id'],'extraction.reused',run=run['id'],
+                          details={'source_revision_id':str(source_revision_id)})
             self.stage(run,'validating')
             with self.db.transaction() as c:
                 ref, ledger = reference_and_ledger(c,candidate,s['file_sha256'])
@@ -219,8 +232,7 @@ class Pipeline:
                     c.execute("UPDATE app.processing_runs SET state='completed',stage=%s,finished_at=now(),lease_token=NULL,lease_until=NULL WHERE id=%s",(current['status'],run['id']))
                     return True
                 revision_id, validation_id = save_validation(c,s['id'],run['id'],candidate,document,ref,decision,
-                    extractor_metadata={'model_id':self.settings.gemini_model,
-                                        'prompt_version':EXTRACTION_PROMPT_VERSION})
+                    extractor_metadata=metadata)
                 state = 'needs_review'
                 if decision.verdict == 'eligible' and decision.acceptance_mode == 'automatic':
                     try:
@@ -295,6 +307,10 @@ class Workers:
         self.stop_event=threading.Event()
         self.threads=[]
         self.errors={'processing':None,'publication':None}
+
+    @property
+    def running(self):
+        return len(self.threads)==2 and all(t.is_alive() for t in self.threads)
 
     def start(self):
         for name in ('processing','publication'):

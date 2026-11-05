@@ -57,8 +57,12 @@ total or bypass failed financial/evidence checks. Acceptance never executes paym
 A transient 429/503/timeout is retried once with a visible stage. A second failure
 leaves the invoice unaccepted with a clear reason. Invalid candidate JSON, missing
 source fields and configuration/auth errors are not solved by repeated requests.
-There is no saved extraction cache or fixture-result shortcut. Allow real OCR and
-model processing to finish; do not present a prior result as fresh extraction.
+For an identical previously reviewed file, matching original provider extraction
+can be reused for seven days for that uploader. **Using saved extraction** is
+shown explicitly; quotes and all nine checks are checked again against the current
+reference and ledger. Model/prompt/reader/pipeline changes force fresh extraction.
+There is no fixture-result shortcut. Show at least one fresh extraction and label
+any reused or historical evidence honestly.
 
 ## Prepare a later pack
 
