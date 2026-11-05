@@ -2623,3 +2623,45 @@ body {
   }
 }
 
+
+/* A document-and-check mark shared by sign-in, navigation and the browser tab. */
+.brand-mark { width: 44px; height: 44px; border: 0; border-radius: 0; padding: 0; }
+.brand-mark img { display: block; width: 100%; height: 100%; }
+.sidebar .brand-mark { width: 36px; height: 36px; }
+.user-row { display: grid; grid-template-columns: 29px minmax(0, 1fr); gap: 10px; }
+.user-row > span { min-width: 0; }
+.logout-button {
+  grid-column: 1 / -1; width: 100%; margin: 5px 0 0; padding: 10px 12px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 42px; border: 1px solid #53695b; border-radius: 8px;
+  background: #263d31; color: #eef4e7; font-size: 13px; font-weight: 600;
+}
+.logout-button:hover:not(:disabled) { background: #344e3e; border-color: #78907a; }
+.logout-button svg { flex-shrink: 0; }
+.logout-dialog {
+  box-sizing: border-box; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  margin: auto; padding: 28px; border: 1px solid #dce3d5; border-radius: 18px;
+  background: #fbfcf8; color: #24342d; font-size: 14px; line-height: 1.5; box-shadow: 0 24px 80px #0e221b33;
+}
+.logout-dialog::backdrop { background: #14261ecc; }
+.logout-dialog-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: #e8efdf; color: #234b3c; margin-bottom: 18px; }
+.logout-dialog h2 { font-size: 22px; margin: 0 0 12px; }
+.logout-dialog > p { color: #5f6c60; line-height: 1.7; }
+.logout-dialog > .error-box { margin-top: 16px; color: #a0372c; }
+.logout-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.logout-dialog-actions button { min-width: 100px; min-height: 44px; justify-content: center; }
+@media (max-width: 900px) {
+  .user-row { display: flex; margin-left: auto; gap: 10px; }
+  .logout-button { width: auto; margin: 0; padding: 9px 12px; }
+}
+@media (max-width: 480px) {
+  .sidebar { gap: 12px; }
+  .sidebar .brand { gap: 8px; }
+  .sidebar .brand-mark { width: 34px; height: 34px; }
+  .sidebar .brand small { font-size: 6px; letter-spacing: .08em; }
+  .user-row { gap: 8px; }
+  .user-row strong { max-width: 64px; font-size: 11px; }
+  .logout-button { gap: 6px; padding: 9px; font-size: 12px; }
+  .logout-dialog { padding: 24px; }
+}
+@media (max-width: 360px) { .user-row strong { max-width: 40px; } }

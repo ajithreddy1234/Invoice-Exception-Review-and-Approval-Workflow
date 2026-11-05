@@ -17,6 +17,8 @@ import { SourceViewer, ReviewEditor } from "./ReviewWorkbench.jsx";
 import "./styles.css";
 import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
 import { apiRequest } from "./api.js";
+import BrandMark from "./BrandMark.jsx";
+import LogoutControl from "./LogoutControl.jsx";
 
 const dateTime = (value) =>
   value
@@ -113,7 +115,7 @@ function Login({ onLogin, initialError, request }) {
     <main className="login-layout">
       <section className="login-story">
         <a href="/" className="brand">
-          <span className="brand-mark">I</span>
+          <BrandMark />
           <span>
             Invoice review<small>PROCUREMENT OPERATIONS</small>
           </span>
@@ -1120,29 +1122,25 @@ function App() {
     navigate("invoices");
   };
   async function logout() {
-    try {
-      await request("/api/auth/logout", { method: "POST", body: "{}" });
-      generation.current++;
-      flight.current = null;
-      setUser(null);
-      setWorkspace(null);
-      setData(null);
-      setSelectedState(null);
-      selectedRef.current = null;
-      setVendor("all");
-      setListVendor("all");
-      setFilter("all");
-      setSearch("");
-      setPage("upload");
-      history.replaceState(null, "", "#upload");
-    } catch (err) {
-      setListError(err.message);
-    }
+    await request("/api/auth/logout", { method: "POST", body: "{}" });
+    generation.current++;
+    flight.current = null;
+    setUser(null);
+    setWorkspace(null);
+    setData(null);
+    setSelectedState(null);
+    selectedRef.current = null;
+    setVendor("all");
+    setListVendor("all");
+    setFilter("all");
+    setSearch("");
+    setPage("upload");
+    history.replaceState(null, "", "#upload");
   }
   if (starting)
     return (
       <div className="app-loading" role="status">
-        <span className="brand-mark">I</span><div><strong>Opening your workspace…</strong><p>Checking your session and connecting to the workspace.</p></div>
+        <BrandMark /><div><strong>Opening your workspace…</strong><p>Checking your session and connecting to the workspace.</p></div>
       </div>
     );
   if (!user)
@@ -1216,7 +1214,7 @@ function App() {
     <div className="app-layout">
       <aside className="sidebar">
         <a href="#upload" className="brand">
-          <span className="brand-mark">I</span>
+          <BrandMark />
           <span>
             Invoice review<small>PROCUREMENT OPERATIONS</small>
           </span>
@@ -1248,14 +1246,7 @@ function App() {
             <strong>{user.display_name || "Workspace user"}</strong>
             <small>{human(user.role)}</small>
           </span>
-          <button
-            className="logout-button"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={logout}
-          >
-            ↪
-          </button>
+          <LogoutControl onConfirm={logout} />
         </div>
       </aside>
       <main className="workspace" ref={scrollArea}>
