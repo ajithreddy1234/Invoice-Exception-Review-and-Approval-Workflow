@@ -28,6 +28,10 @@ as monetary commitments. Full/partial billing and approved tolerances are explic
 The model proposes fields from embedded text or local OCR, with a page and quote.
 It does not decide eligibility. Unreadable payable values stay unknown. Neither
 subtotal arithmetic nor the remaining PO balance can fill a missing payable total.
+Printed-field evidence establishes what the document says; it does not establish
+that the supplier issued it or that goods/services were delivered. Supplier
+onboarding and receipt authorization remain business controls.
+
 Admin corrections preserve prior evidence, need a reason and still run every
 check. A separate explicit action accepts an eligible corrected invoice.
 
@@ -56,7 +60,7 @@ Previously accepted records remain unchanged and still block duplicates.
 | Buyer and receipt checks | A valid vendor/PO and arithmetic do not prove the right buyer was billed or goods/services were received | Add buyer legal entities/tax identifiers and receipt/service-approval data. Implement bill-to matching and two-/three-way matching according to actual process. Until then this is invoice/PO verification, not proof of delivery. |
 | Credit notes, reversals and invoice lifecycle | Editing/deleting an acceptance breaks history; legitimate credits need separate accounting treatment | Design linked credit/reversal entries and downstream reconciliation. Current scope supports positive invoices, no cancellation/payment ledger. Agree the namespace for invoice-number reuse across entities/years before changing uniqueness. |
 | Source retention, privacy and recovery | Seven-day source expiry is an evaluation policy, not a company's approved records policy | Approve retention and deletion rules for originals and extracted evidence, configure/implement them, back up both DB and private objects, and demonstrate a restore. A DB backup does not include source files. |
-| Credentials and staff identity | Shared evaluator accounts and previously disclosed credentials are unsuitable for business operations | Rotate disclosed secrets, provision named staff accounts, verify least-privilege database/Storage access, and select MFA/SSO/revocation procedures as required. No rotation is claimed by this release. |
+| Credentials and staff identity | Shared evaluator accounts and previously disclosed credentials are unsuitable for business operations | Rotate disclosed secrets, provision named staff accounts, verify least-privilege database/Storage access, and select MFA/SSO/revocation procedures as required. Runtime should use a dedicated restricted database login; a migration-owner credential with per-transaction role switching remains more powerful if compromised. No rotation is claimed by this release. |
 | Availability and monitoring | Sleeping workers cannot offer continuous processing; configured provider keys do not establish current quota | Choose always-on hosting with agreed recovery targets, monitor job age, extraction failures, publication backlog and reference freshness, and alert an operator. Load-test the agreed volume. |
 | Deployment controls | Local regression evidence alone does not enforce future release quality | Add controlled CI checks, reviewed changes, staging and a rollback procedure. This release's tests were executed locally and the published release is separately probed. |
 

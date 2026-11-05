@@ -16,6 +16,22 @@ Current v0.9.0 regression checks on 6 November 2026 (India time):
   acceptance, queue limits remain atomic, expired work avoids provider calls,
   and full-history search/pagination stays ownership-scoped past 200 records.
 
+Current hosted v0.9.0 verification also passed:
+
+- Deployed version and every JS/CSS/logo asset byte-match the local build.
+- Actual admin/user logins, restricted DB permission gate, running workers,
+  configured queue bounds, malformed-cursor rejection and owner/admin isolation.
+- Full-history paging traversed five pages (21 records before verification upload).
+- Downloaded original matched its recorded SHA-256. A changed-byte synthetic
+  re-export invoked fresh Gemini extraction, passed the new invoice-ID evidence
+  guard and was blocked as a duplicate. No new acceptance was created; the seven
+  accepted records and commitments remained unchanged.
+- One polling connection disconnected; verification resumed the existing run,
+  without replaying the upload. This is not a claim of uninterrupted availability
+  or a new cold-start measurement. Provider dependencies remain external.
+- Unauthenticated deployment/security checks passed separately. These hosted
+  results do not constitute an authenticated browser walkthrough of every screen.
+
 Earlier v0.6–v0.8 infrastructure and live workflow observations follow. They are
 not new measurements of v0.9.0:
 
