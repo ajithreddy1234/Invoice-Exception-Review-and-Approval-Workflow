@@ -1,5 +1,12 @@
 # Verification and practical limits
 
+Local v0.12 review candidate, 7 November 2026 (India time): see
+[case-study update and evidence](CASE-STUDY-UPDATE.md). It adds business explanations,
+recorded timings, read-only revision inspection, scoped database metrics and
+varied synthetic inputs. All local checks passed; eight fresh Gemini extractions
+produced four eligible/four review outcomes without cloud ledger writes. The
+hosted results below remain v0.11 evidence, not hosted verification of v0.12.
+
 Hosted v0.11.0, 6 November 2026 (India time), application commit
 `b5edb8b839bf7d1867203e19e0a1ab14f966d1c9`:
 

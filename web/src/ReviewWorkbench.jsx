@@ -174,22 +174,52 @@ export function ReviewEditor({ data, user, request, onUpdate }) {
     [resolved, setResolved] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [options, setOptions] = useState(null), [optionsError,setOptionsError] = useState("");
-  const [mappings,setMappings] = useState({}), [verifiedFields,setVerifiedFields] = useState([]);
-  const reviewable = user.role === "admin" && candidate && !data.acceptance && ["needs_review","reference_hold"].includes(data.submission.status);
+  const [options, setOptions] = useState(null),
+    [optionsError, setOptionsError] = useState("");
+  const [mappings, setMappings] = useState({}),
+    [verifiedFields, setVerifiedFields] = useState([]);
+  const reviewable =
+    user.role === "admin" &&
+    candidate &&
+    !data.acceptance &&
+    ["needs_review", "reference_hold"].includes(data.submission.status);
   useEffect(() => {
     if (!open || !reviewable) return;
     let current = true;
-    setOptions(null);setOptionsError("");setMappings({});setVerifiedFields([]);setSelectedPo("");setResolved(false);
-    request(`/api/admin/submissions/${data.submission.id}/review-options`).then(value => {
-      if (current && value.revision_id === data.revision.id) setOptions(value);
-      else if(current) setOptionsError("The revision changed. Refresh the invoice before reviewing.");
-    }).catch(error => {if(current) setOptionsError(error.message);});
-    return () => {current=false;};
-  },[open,reviewable,request,data.submission.id,data.revision?.id]);
-  const unchanged = candidate && JSON.stringify(candidate) === JSON.stringify(original);
-  const selection = candidate ? reviewSelections(options,candidate,selectedPo,mappings) : {mappings:[]};
-  function updateCandidate(value) {setCandidate(value);setMappings({});setVerifiedFields([]);setSelectedPo("");setResolved(false);}
+    setOptions(null);
+    setOptionsError("");
+    setMappings({});
+    setVerifiedFields([]);
+    setSelectedPo("");
+    setResolved(false);
+    request(`/api/admin/submissions/${data.submission.id}/review-options`)
+      .then((value) => {
+        if (current && value.revision_id === data.revision.id)
+          setOptions(value);
+        else if (current)
+          setOptionsError(
+            "The revision changed. Refresh the invoice before reviewing.",
+          );
+      })
+      .catch((error) => {
+        if (current) setOptionsError(error.message);
+      });
+    return () => {
+      current = false;
+    };
+  }, [open, reviewable, request, data.submission.id, data.revision?.id]);
+  const unchanged =
+    candidate && JSON.stringify(candidate) === JSON.stringify(original);
+  const selection = candidate
+    ? reviewSelections(options, candidate, selectedPo, mappings)
+    : { mappings: [] };
+  function updateCandidate(value) {
+    setCandidate(value);
+    setMappings({});
+    setVerifiedFields([]);
+    setSelectedPo("");
+    setResolved(false);
+  }
   if (
     user.role !== "admin" ||
     !candidate ||
@@ -214,7 +244,9 @@ export function ReviewEditor({ data, user, request, onUpdate }) {
           candidate: corrected,
           reason,
           selected_po: selectedPo || null,
-          review_reference_id: unchanged ? options?.reference_version_id || null : null,
+          review_reference_id: unchanged
+            ? options?.reference_version_id || null
+            : null,
           line_mappings: unchanged ? selection.mappings : [],
           verified_ocr_fields: unchanged ? verifiedFields : [],
         }),
@@ -289,7 +321,10 @@ export function ReviewEditor({ data, user, request, onUpdate }) {
             <select
               value={candidate.tax_presentation}
               onChange={(e) =>
-                updateCandidate({ ...candidate, tax_presentation: e.target.value })
+                updateCandidate({
+                  ...candidate,
+                  tax_presentation: e.target.value,
+                })
               }
             >
               {["exclusive", "inclusive", "none", "unclear"].map((v) => (
@@ -326,23 +361,82 @@ export function ReviewEditor({ data, user, request, onUpdate }) {
           </details>
           <fieldset className="review-decisions">
             <legend>Resolve supported exceptions</legend>
-            <p className="small-muted">Describe why the original and procurement record agree. Financial limits and source checks still apply. Saving requires a separate acceptance.</p>
-            {optionsError && <div role="alert" className="error-box">{optionsError}</div>}
-            {!unchanged && <p>Save the corrected fields first, then reopen review to load matching choices and verify OCR warnings.</p>}
-            {unchanged && !options && !optionsError && <p role="status">Loading current review choices…</p>}
-            {unchanged && selection.po && candidate.line_items.map((line,index) => <label key={index}>
-              Map invoice line {index+1}: {line.description.value || "Unreadable description"}
-              <select aria-label={`PO line for invoice line ${index+1}`} value={mappings[index]?.po === selection.po.po_code ? mappings[index].code : ""}
-                onChange={e => setMappings({...mappings,[index]:{po:selection.po.po_code,code:e.target.value}})}>
-                <option value="">Use exact automatic matching</option>
-                {selection.po.lines.map(row => <option key={row.line_code} value={row.line_code}>{row.line_code} · {row.description} · {row.unit}</option>)}
-              </select>
-            </label>)}
-            {unchanged && (options?.ocr_fields || []).map(path => <label className="checkbox-label" key={path}>
-              <input type="checkbox" checked={verifiedFields.includes(path)} onChange={e => setVerifiedFields(e.target.checked ? [...verifiedFields,path] : verifiedFields.filter(x => x !== path))}/>
-              I checked {reviewFieldLabel(path)} against the readable original; the quoted value is correct despite low OCR confidence.
-            </label>)}
-            {unchanged && options && !selection.po && <p>Resolve the vendor, PO and currency before mapping lines. An unreadable source value requires a clearer document.</p>}
+            <p className="small-muted">
+              Describe why the original and procurement record agree. Financial
+              limits and source checks still apply. Saving requires a separate
+              acceptance.
+            </p>
+            {optionsError && (
+              <div role="alert" className="error-box">
+                {optionsError}
+              </div>
+            )}
+            {!unchanged && (
+              <p>
+                Save the corrected fields first, then reopen review to load
+                matching choices and verify OCR warnings.
+              </p>
+            )}
+            {unchanged && !options && !optionsError && (
+              <p role="status">Loading current review choices…</p>
+            )}
+            {unchanged &&
+              selection.po &&
+              candidate.line_items.map((line, index) => (
+                <label key={index}>
+                  Map invoice line {index + 1}:{" "}
+                  {line.description.value || "Unreadable description"}
+                  <select
+                    aria-label={`PO line for invoice line ${index + 1}`}
+                    value={
+                      mappings[index]?.po === selection.po.po_code
+                        ? mappings[index].code
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setMappings({
+                        ...mappings,
+                        [index]: {
+                          po: selection.po.po_code,
+                          code: e.target.value,
+                        },
+                      })
+                    }
+                  >
+                    <option value="">Use exact automatic matching</option>
+                    {selection.po.lines.map((row) => (
+                      <option key={row.line_code} value={row.line_code}>
+                        {row.line_code} · {row.description} · {row.unit}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            {unchanged &&
+              (options?.ocr_fields || []).map((path) => (
+                <label className="checkbox-label" key={path}>
+                  <input
+                    type="checkbox"
+                    checked={verifiedFields.includes(path)}
+                    onChange={(e) =>
+                      setVerifiedFields(
+                        e.target.checked
+                          ? [...verifiedFields, path]
+                          : verifiedFields.filter((x) => x !== path),
+                      )
+                    }
+                  />
+                  I checked {reviewFieldLabel(path)} against the readable
+                  original; the quoted value is correct despite low OCR
+                  confidence.
+                </label>
+              ))}
+            {unchanged && options && !selection.po && (
+              <p>
+                Resolve the vendor, PO and currency before mapping lines. An
+                unreadable source value requires a clearer document.
+              </p>
+            )}
           </fieldset>
           {candidate.uncertainties.length > 0 && (
             <div className="uncertainty-review">
@@ -399,18 +493,36 @@ export function ReviewEditor({ data, user, request, onUpdate }) {
   );
 }
 
-
-export function ReviewResolution({data}) {
-  const context=data.revision?.evidence?.review_context;
-  if(!context?.actor_id) return null;
-  return <section className="section-card review-resolution">
-    <h3>Recorded admin resolution</h3>
-    <p>{context.reason}</p>
-    {context.selected_po && <p>Selected purchase order: <strong>{context.selected_po}</strong></p>}
-    {(context.line_mappings || []).map(row => <p key={row.invoice_line}>
-      Line {row.invoice_line+1}: {row.source_description} → {row.po_description} ({row.po_code}/{row.po_line_code})
-    </p>)}
-    {(context.verified_ocr_fields || []).length>0 && <p>OCR confirmed against original: {context.verified_ocr_fields.map(reviewFieldLabel).join(", ")}.</p>}
-    <p className="small-muted">Reviewer {context.actor_id} · Reference {context.reference_version_id}. Original extraction and OCR warnings remain in the evidence history. Acceptance is a separate recorded action.</p>
-  </section>;
+export function ReviewResolution({ data }) {
+  const context = data.revision?.evidence?.review_context;
+  if (!context?.actor_id) return null;
+  return (
+    <section className="section-card review-resolution">
+      <h3>Recorded admin resolution</h3>
+      <p>{context.reason}</p>
+      {context.selected_po && (
+        <p>
+          Selected purchase order: <strong>{context.selected_po}</strong>
+        </p>
+      )}
+      {(context.line_mappings || []).map((row) => (
+        <p key={row.invoice_line}>
+          Interpretation mapping only — line {row.invoice_line + 1}:{" "}
+          {row.source_description} → {row.po_description} ({row.po_code}/
+          {row.po_line_code}). Original invoice wording is preserved.
+        </p>
+      ))}
+      {(context.verified_ocr_fields || []).length > 0 && (
+        <p>
+          OCR confirmed against original:{" "}
+          {context.verified_ocr_fields.map(reviewFieldLabel).join(", ")}.
+        </p>
+      )}
+      <p className="small-muted">
+        Reviewer {context.actor_id} · Reference {context.reference_version_id}.
+        Original extraction and OCR warnings remain in the evidence history.
+        Acceptance is a separate recorded action.
+      </p>
+    </section>
+  );
 }

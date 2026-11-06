@@ -1,0 +1,1396 @@
+{
+  "scope": "FRESH_PROVIDER_EXTRACTION_LOCAL_SYNTHETIC_REFERENCE_NO_DB_OR_SHEET_WRITES",
+  "recorded_at_utc": "2026-11-06T21:06:07.625790+00:00",
+  "model": "gemini-3.1-flash-lite",
+  "results": [
+    {
+      "file": "01_card_invoice.pdf",
+      "sha256": "c1a0def43e12af14ac9273dad9d38549de966c7527f3bd40a05dadb859267d16",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "eligible",
+      "candidate": {
+        "vendor_name": {
+          "value": "Beta Consulting Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Beta Consulting Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-CARD-01",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-CARD-01"
+          }
+        },
+        "invoice_date": {
+          "value": "2026-10-31",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 2026-10-31"
+          }
+        },
+        "po_reference": {
+          "value": "PO-BETA",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-BETA"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "0.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (0%): INR 0.00"
+          }
+        },
+        "total_gross": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 10,000.00"
+          }
+        },
+        "tax_presentation": "none",
+        "line_items": [
+          {
+            "description": {
+              "value": "Consulting services",
+              "source": {
+                "page": 1,
+                "quote": "Consulting services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "pass",
+          "detail": "Required fields parse correctly and reference is current."
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-BETA."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-BETA belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "pass",
+          "detail": "Every extracted field is supported by page text; payable evidence is readable."
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 10,000.00 + tax INR 0.00 = gross INR 10,000.00; payable INR 10,000.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "ELIGIBLE_NOT_COMMITTED",
+        "primary_reason": "Recorded validation is eligible, but no acceptance transaction has committed.",
+        "next_action": "Wait for or inspect the final acceptance transaction. Eligibility alone does not consume PO balance."
+      },
+      "source_methods": [
+        "embedded"
+      ],
+      "seconds": 9.543
+    },
+    {
+      "file": "02_table_invoice.pdf",
+      "sha256": "b94f5fec80424cedd4b9fb5762f9276ed9c467d92fdd46790e426c7e93b3a670",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "eligible",
+      "candidate": {
+        "vendor_name": {
+          "value": "Acme Services Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Acme Services Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-TABLE-01",
+          "source": {
+            "page": 1,
+            "quote": "INV-LAYOUT-TABLE-01"
+          }
+        },
+        "invoice_date": {
+          "value": "2026-10-31",
+          "source": {
+            "page": 1,
+            "quote": "2026-10-31"
+          }
+        },
+        "po_reference": {
+          "value": "PO-PARTIAL",
+          "source": {
+            "page": 1,
+            "quote": "PO-PARTIAL"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "6,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 6,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "0.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (0%): INR 0.00"
+          }
+        },
+        "total_gross": {
+          "value": "6,000.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE INR 6,000.00"
+          }
+        },
+        "tax_presentation": "none",
+        "line_items": [
+          {
+            "description": {
+              "value": "Consulting services",
+              "source": {
+                "page": 1,
+                "quote": "Consulting services"
+              }
+            },
+            "quantity": {
+              "value": "6",
+              "source": {
+                "page": 1,
+                "quote": "6"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "6,000.00",
+              "source": {
+                "page": 1,
+                "quote": "6,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "pass",
+          "detail": "Required fields parse correctly and reference is current."
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-ACME."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-PARTIAL belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "pass",
+          "detail": "Every extracted field is supported by page text; payable evidence is readable."
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 6,000.00 + tax INR 0.00 = gross INR 6,000.00; payable INR 6,000.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "ELIGIBLE_NOT_COMMITTED",
+        "primary_reason": "Recorded validation is eligible, but no acceptance transaction has committed.",
+        "next_action": "Wait for or inspect the final acceptance transaction. Eligibility alone does not consume PO balance."
+      },
+      "source_methods": [
+        "embedded"
+      ],
+      "seconds": 8.686
+    },
+    {
+      "file": "03_writer_tax.pdf",
+      "sha256": "883cd724a8c8ea63699aea763211306b350b7afd06d21b14181c92353cfbd629",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "eligible",
+      "candidate": {
+        "vendor_name": {
+          "value": "Acme Services Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Acme Services Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-WRITER-01",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-WRITER-01"
+          }
+        },
+        "invoice_date": {
+          "value": "2026-10-31",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 2026-10-31"
+          }
+        },
+        "po_reference": {
+          "value": "PO-TAX",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-TAX"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "1,800.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (18%): INR 1,800.00"
+          }
+        },
+        "total_gross": {
+          "value": "11,800.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 11,800.00"
+          }
+        },
+        "tax_presentation": "exclusive",
+        "line_items": [
+          {
+            "description": {
+              "value": "Tax advisory services",
+              "source": {
+                "page": 1,
+                "quote": "Tax advisory services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "pass",
+          "detail": "Required fields parse correctly and reference is current."
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-ACME."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-TAX belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "pass",
+          "detail": "Every extracted field is supported by page text; payable evidence is readable."
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 10,000.00 + tax INR 1,800.00 = gross INR 11,800.00; payable INR 11,800.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "ELIGIBLE_NOT_COMMITTED",
+        "primary_reason": "Recorded validation is eligible, but no acceptance transaction has committed.",
+        "next_action": "Wait for or inspect the final acceptance transaction. Eligibility alone does not consume PO balance."
+      },
+      "source_methods": [
+        "embedded"
+      ],
+      "seconds": 23.419
+    },
+    {
+      "file": "04_writer_slash_date.pdf",
+      "sha256": "a710e488545f9207a4f05df9a77c5c7eb4ede1e25a9dd76138d4e2b0f4897b6f",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "needs_review",
+      "candidate": {
+        "vendor_name": {
+          "value": "Beta Consulting Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Beta Consulting Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-DATE-01",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-DATE-01"
+          }
+        },
+        "invoice_date": {
+          "value": "13/10/2026",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 13/10/2026"
+          }
+        },
+        "po_reference": {
+          "value": "PO-BETA",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-BETA"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "0.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (0%): INR 0.00"
+          }
+        },
+        "total_gross": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 10,000.00"
+          }
+        },
+        "tax_presentation": "none",
+        "line_items": [
+          {
+            "description": {
+              "value": "Consulting services",
+              "source": {
+                "page": 1,
+                "quote": "Consulting services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "review",
+          "detail": "Unresolved fields: invoice_date. "
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-BETA."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-BETA belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "pass",
+          "detail": "Every extracted field is supported by page text; payable evidence is readable."
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 10,000.00 + tax INR 0.00 = gross INR 10,000.00; payable INR 10,000.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "DATE_REVIEW_REQUIRED",
+        "primary_reason": "The invoice date is missing or uses an unsupported or ambiguous format.",
+        "next_action": "Compare the printed date with the original. Use a supported, evidenced extraction or request a corrected invoice; do not guess a slash-date locale."
+      },
+      "source_methods": [
+        "embedded"
+      ],
+      "seconds": 8.83
+    },
+    {
+      "file": "05_writer_ambiguous_date.pdf",
+      "sha256": "f59fcff7a7febec113ca34870a3966e54ccfad338bf03ed6533bbbd9a18ed2ac",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "needs_review",
+      "candidate": {
+        "vendor_name": {
+          "value": "Beta Consulting Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Beta Consulting Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-DATE-02",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-DATE-02"
+          }
+        },
+        "invoice_date": {
+          "value": "05/06/2026",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 05/06/2026"
+          }
+        },
+        "po_reference": {
+          "value": "PO-BETA",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-BETA"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "0.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (0%): INR 0.00"
+          }
+        },
+        "total_gross": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 10,000.00"
+          }
+        },
+        "tax_presentation": "none",
+        "line_items": [
+          {
+            "description": {
+              "value": "Consulting services",
+              "source": {
+                "page": 1,
+                "quote": "Consulting services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "review",
+          "detail": "Unresolved fields: invoice_date. "
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-BETA."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-BETA belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "pass",
+          "detail": "Every extracted field is supported by page text; payable evidence is readable."
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 10,000.00 + tax INR 0.00 = gross INR 10,000.00; payable INR 10,000.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "DATE_REVIEW_REQUIRED",
+        "primary_reason": "The invoice date is missing or uses an unsupported or ambiguous format.",
+        "next_action": "Compare the printed date with the original. Use a supported, evidenced extraction or request a corrected invoice; do not guess a slash-date locale."
+      },
+      "source_methods": [
+        "embedded"
+      ],
+      "seconds": 10.669
+    },
+    {
+      "file": "06_scan_statement.pdf",
+      "sha256": "f17ac6c8dd814dda1a521c7457a19c16e989978ff0277c59aed74d1dcefcd77b",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "eligible",
+      "candidate": {
+        "vendor_name": {
+          "value": "Acme Services Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Acme Services Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-WRITER-01",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-WRITER-01"
+          }
+        },
+        "invoice_date": {
+          "value": "2026-10-31",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 2026-10-31"
+          }
+        },
+        "po_reference": {
+          "value": "PO-TAX",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-TAX"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "1,800.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (18%): INR 1,800.00"
+          }
+        },
+        "total_gross": {
+          "value": "11,800.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 11,800.00"
+          }
+        },
+        "tax_presentation": "exclusive",
+        "line_items": [
+          {
+            "description": {
+              "value": "Tax advisory services",
+              "source": {
+                "page": 1,
+                "quote": "Tax advisory services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "pass",
+          "detail": "Required fields parse correctly and reference is current."
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-ACME."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-TAX belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "pass",
+          "detail": "Every extracted field is supported by page text; payable evidence is readable."
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 10,000.00 + tax INR 1,800.00 = gross INR 11,800.00; payable INR 11,800.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "ELIGIBLE_NOT_COMMITTED",
+        "primary_reason": "Recorded validation is eligible, but no acceptance transaction has committed.",
+        "next_action": "Wait for or inspect the final acceptance transaction. Eligibility alone does not consume PO balance."
+      },
+      "source_methods": [
+        "ocr"
+      ],
+      "seconds": 3.359
+    },
+    {
+      "file": "07_photo_like.jpg",
+      "sha256": "4f22aeae41f401edb9d7c9c6c8d4e5a4d09a120b61376d74aaa095ca2429c8b7",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "needs_review",
+      "candidate": {
+        "vendor_name": {
+          "value": "Beta Consulting Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Beta Consulting Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-PHOTO-01",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-PHOTO-01"
+          }
+        },
+        "invoice_date": {
+          "value": "2026-10-31",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 2026-10-31"
+          }
+        },
+        "po_reference": {
+          "value": "PO-BETA",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-BETA"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "0.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (0%): INR 0.00"
+          }
+        },
+        "total_gross": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 10,000.00"
+          }
+        },
+        "tax_presentation": "none",
+        "line_items": [
+          {
+            "description": {
+              "value": "Consulting services",
+              "source": {
+                "page": 1,
+                "quote": "Consulting services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit_price": {
+              "value": "41,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 41,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": []
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "pass",
+          "detail": "Required fields parse correctly and reference is current."
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-BETA."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-BETA belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "review",
+          "detail": "subtotal_net: LOW_OCR_CONFIDENCE; total_gross: LOW_OCR_CONFIDENCE; line_items.0.net_amount: LOW_OCR_CONFIDENCE"
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "pass",
+          "detail": "Allocated net INR 10,000.00 + tax INR 0.00 = gross INR 10,000.00; payable INR 10,000.00; tolerance INR 1.00."
+        },
+        {
+          "code": "line_allocation",
+          "status": "review",
+          "detail": "Line 1: printed net does not equal supported quantity times unit price."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "OCR_REVIEW_REQUIRED",
+        "primary_reason": "The document reading contains uncertain source evidence.",
+        "next_action": "Compare the original with the quoted values. An admin may confirm an already grounded OCR warning; unsupported values still require correction or a clearer source."
+      },
+      "source_methods": [
+        "ocr"
+      ],
+      "seconds": 2.956
+    },
+    {
+      "file": "08_inconsistent_payable.pdf",
+      "sha256": "3a61da5aea48d2549b5817e8144238bc0e90731bcc64f6cd2eb8ef6a6c3a0358",
+      "provider_attempted": true,
+      "financial_commitment": "not_recorded",
+      "outcome": "needs_review",
+      "candidate": {
+        "vendor_name": {
+          "value": "Beta Consulting Pvt Ltd",
+          "source": {
+            "page": 1,
+            "quote": "Beta Consulting Pvt Ltd"
+          }
+        },
+        "invoice_number": {
+          "value": "INV-LAYOUT-TOTAL-01",
+          "source": {
+            "page": 1,
+            "quote": "Invoice number: INV-LAYOUT-TOTAL-01"
+          }
+        },
+        "invoice_date": {
+          "value": "2026-10-31",
+          "source": {
+            "page": 1,
+            "quote": "Invoice date: 2026-10-31"
+          }
+        },
+        "po_reference": {
+          "value": "PO-BETA",
+          "source": {
+            "page": 1,
+            "quote": "Purchase order: PO-BETA"
+          }
+        },
+        "currency": {
+          "value": "INR",
+          "source": {
+            "page": 1,
+            "quote": "Currency: INR"
+          }
+        },
+        "subtotal_net": {
+          "value": "10,000.00",
+          "source": {
+            "page": 1,
+            "quote": "Subtotal (net): INR 10,000.00"
+          }
+        },
+        "tax_amount": {
+          "value": "0.00",
+          "source": {
+            "page": 1,
+            "quote": "GST (0%): INR 0.00"
+          }
+        },
+        "total_gross": {
+          "value": "9,700.00",
+          "source": {
+            "page": 1,
+            "quote": "TOTAL PAYABLE\nINR 9,700.00"
+          }
+        },
+        "tax_presentation": "none",
+        "line_items": [
+          {
+            "description": {
+              "value": "Consulting services",
+              "source": {
+                "page": 1,
+                "quote": "Consulting services"
+              }
+            },
+            "quantity": {
+              "value": "10",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit": {
+              "value": "hour",
+              "source": {
+                "page": 1,
+                "quote": "Quantity: 10 hour"
+              }
+            },
+            "unit_price": {
+              "value": "1,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Unit price (net): INR 1,000.00"
+              }
+            },
+            "net_amount": {
+              "value": "10,000.00",
+              "source": {
+                "page": 1,
+                "quote": "Line net: INR 10,000.00"
+              }
+            },
+            "tax_amount": {
+              "value": null,
+              "source": null
+            },
+            "gross_amount": {
+              "value": null,
+              "source": null
+            }
+          }
+        ],
+        "uncertainties": [
+          "The total payable amount (9,700.00) does not match the subtotal (10,000.00) plus tax (0.00)."
+        ]
+      },
+      "checks": [
+        {
+          "code": "required_fields",
+          "status": "pass",
+          "detail": "Required fields parse correctly and reference is current."
+        },
+        {
+          "code": "vendor_match",
+          "status": "pass",
+          "detail": "Exact approved legal-name/alias match: V-BETA."
+        },
+        {
+          "code": "po_match",
+          "status": "pass",
+          "detail": "Unique open PO PO-BETA belongs to the matched vendor."
+        },
+        {
+          "code": "source_evidence",
+          "status": "review",
+          "detail": "uncertainties: EXTRACTION_UNCERTAIN"
+        },
+        {
+          "code": "duplicate_check",
+          "status": "pass",
+          "detail": "No accepted file hash or vendor/invoice identity was found."
+        },
+        {
+          "code": "currency",
+          "status": "pass",
+          "detail": "Invoice and PO use INR; an explicit rule exists."
+        },
+        {
+          "code": "arithmetic",
+          "status": "review",
+          "detail": "Printed payable differs from allocated gross beyond arithmetic tolerance."
+        },
+        {
+          "code": "line_allocation",
+          "status": "pass",
+          "detail": "Source quantities, units, prices and tax reconcile to exact PO lines; inclusive derivations are explicit."
+        },
+        {
+          "code": "po_balance",
+          "status": "pass",
+          "detail": "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
+        }
+      ],
+      "explanation": {
+        "commitment": "not_recorded",
+        "report": "not_required",
+        "financial_effect": "No PO amount has been committed by this submission.",
+        "reason_code": "SOURCE_EVIDENCE",
+        "primary_reason": "One or more extracted values lack reliable or consistent source evidence.",
+        "next_action": "Compare the quoted page with the original. An administrator may correct supported extraction or confirm a grounded OCR warning; missing or contradictory values remain blocking."
+      },
+      "source_methods": [
+        "embedded"
+      ],
+      "seconds": 3.514
+    }
+  ],
+  "provider_evidence_note": "Original fresh Gemini candidates and timings retained; decision explanations rechecked locally without additional provider calls.",
+  "local_recheck_at_utc": "2026-11-06T21:32:15.622654+00:00",
+  "original_provider_report_sha256": "cd4ecbceefc6017d09ee84cef11548dc0b83cbfa9a7bbaadcde710e3ae8b8848"
+}

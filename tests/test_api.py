@@ -466,7 +466,7 @@ def test_database_recovers_without_a_redeploy_and_workers_start_once_after_permi
         assert len(calls)==3 and app.state.startup=='database_verified'
         workers.start.assert_called_once()
         response=client.get('/health/live')
-        assert response.json()['version']=='0.11.0'
+        assert response.json()['version']=='0.12.0'
         assert 0<=response.json()['uptime_seconds']<3
         assert 'private' not in response.text
 

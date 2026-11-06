@@ -1,5 +1,6 @@
 import React from "react";
 import { human } from "./model.js";
+import { seconds } from "./DecisionOverview.jsx";
 
 import { money, dashboardView } from "./dashboard-model.js";
 export { money } from "./dashboard-model.js";
@@ -113,6 +114,66 @@ export default function Dashboard({
           <small>No additional PO commitment</small>
         </article>
       </div>
+      <section className="section-card outcome-insights">
+        <h2>Invoice outcomes</h2>
+        <p className="small-muted">
+          All authorized history · current vendor/currency filters ·
+          unknown-currency records remain included in counts and timing.
+        </p>
+        <div className="outcome-counts">
+          {[
+            ["Accepted", v.accepted_count],
+            ["Needs review", v.review_count],
+            ["Duplicate blocked", v.duplicate_count],
+            ["Rejected", v.rejected_count],
+            ["Technical failure", v.failed_count],
+            ["Expired", v.expired_count],
+            ["Processing", v.processing_count],
+          ].map(([label, count]) => (
+            <div key={label}>
+              <strong>{count}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="insight-grid">
+          <article>
+            <h3>Straight-through acceptance</h3>
+            <strong className="insight-value">
+              {v.straight_through_percent == null
+                ? "No outcomes yet"
+                : `${v.straight_through_percent.toFixed(1)}%`}
+            </strong>
+            <p>
+              {v.straight_through_count} accepted without recorded review or
+              user-requested rerun / {v.outcome_count} finished outcomes.
+            </p>
+            <details>
+              <summary>How this is counted</summary>
+              <p>
+                Denominator includes accepted invoices, review/reference holds,
+                blocked duplicates, rejections, technical failures and expiry.
+                Queued/running submissions are excluded. Uploading the initial
+                document is not review; an automatic provider retry is not a
+                human intervention. A duplicate block is not counted as an
+                acceptance.
+              </p>
+            </details>
+          </article>
+          <article>
+            <h3>Median processing time</h3>
+            <strong className="insight-value">
+              {seconds(v.median_processing_seconds)}
+            </strong>
+            <p>
+              {v.timing_sample_count} measured invoices. Latest completed
+              automated run per invoice, from saved start to finish; includes
+              provider waits/recovery. Queue wait, admin revalidation and
+              publication are excluded.
+            </p>
+          </article>
+        </div>
+      </section>
       <div className="dashboard-columns">
         <section className="section-card company-chart">
           <div className="section-heading">
@@ -189,8 +250,8 @@ export default function Dashboard({
             Open review queue <span>→</span>
           </button>
           <p className="chart-note">
-            Unknown currency contributes to counts only. No value is inferred
-            from a purchase order.
+            Unknown-currency records contribute to operational counts and
+            timing. No monetary value is inferred from a purchase order.
           </p>
         </section>
       </div>
@@ -226,43 +287,41 @@ export default function Dashboard({
           </div>
         </section>
         <section className="section-card">
-          <div className="section-heading">
-            <div>
-              <h2>Decision overview</h2>
-              <p className="small-muted">Selected vendor and currency</p>
-            </div>
-          </div>
-          <div className="decision-counts">
-            {[
-              ["Accepted", v.accepted_count, "accepted"],
-              ["Needs review", v.review_count, "review"],
-              ["Duplicates", v.duplicate_count, "duplicate"],
-              [
-                "Other / processing",
-                v.invoice_count -
-                  v.accepted_count -
-                  v.review_count -
-                  v.duplicate_count,
-                "other",
-              ],
-            ].map(([label, n, tone]) => (
-              <div key={label}>
-                <span>
-                  <i className={tone} />
-                  {label}
-                </span>
-                <strong>{n}</strong>
-                <div className="decision-mini-track">
-                  <i
-                    className={tone}
-                    style={{
-                      width: `${v.invoice_count ? (n / v.invoice_count) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2>Procurement reference</h2>
+          <p>
+            <strong>
+              {workspace.reference?.fresh
+                ? "Current active snapshot"
+                : "Acceptance paused: refresh required"}
+            </strong>
+          </p>
+          <p className="small-muted">
+            Snapshot{" "}
+            {workspace.reference?.id
+              ? String(workspace.reference.id).slice(0, 8)
+              : "Not available"}
+          </p>
+          <p>
+            Imported:{" "}
+            {workspace.reference?.imported_at
+              ? new Date(workspace.reference.imported_at).toLocaleString(
+                  "en-IN",
+                )
+              : "Not recorded"}
+          </p>
+          <p>
+            Freshness ends:{" "}
+            {workspace.reference?.valid_until
+              ? new Date(workspace.reference.valid_until).toLocaleString(
+                  "en-IN",
+                )
+              : "Not recorded"}
+          </p>
+          <p className="muted">
+            Stale procurement data pauses all new acceptances, including admin
+            decisions. An administrator must sync approved references and rerun
+            verification. Existing commitments remain recorded.
+          </p>
         </section>
       </div>
       {admin && (
@@ -331,8 +390,7 @@ export default function Dashboard({
         {admin
           ? "Workspace totals"
           : "Only your uploaded invoices are included"}
-        . Charts cover all visible records; the invoice list shows the latest{" "}
-        {workspace.list_limit}. Updated{" "}
+        . Totals and invoice search cover the full authorized history. Updated{" "}
         {new Date(workspace.generated_at).toLocaleTimeString()}.{" "}
         {workspace.reference?.fresh
           ? "Procurement reference is current."

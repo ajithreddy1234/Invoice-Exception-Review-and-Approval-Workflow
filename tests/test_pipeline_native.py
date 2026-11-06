@@ -151,6 +151,86 @@ def scalar(system,sql,params=None):
     with system['db'].transaction() as conn:return next(iter(conn.execute(sql,params).fetchone().values()))
 
 
+def test_recorded_decision_timing_policy_and_historical_reference(system):
+    sid,_=upload(system);system['pipeline'].process_once();data=state(system,sid)
+    assert data['decision']['commitment']=='recorded' and data['decision']['report']=='pending'
+    assert data['policy']['arithmetic_tolerance_minor']==100
+    assert data['policy']['reference_version_id']==str(system['version'])
+    stages=data['timing']['stages']
+    assert [r['stage'] for r in stages]==['reading_document','extracting_fields','validating']
+    assert all(r['seconds'] is not None and r['seconds']>=0 for r in stages)
+    assert data['timing']['queue_seconds']>=0 and data['timing']['processing_seconds']>=0
+    tabs={p.stem:list(csv.reader(p.open())) for p in (Path(__file__).parent/'reference_data').glob('*.csv')}
+    tabs['Rules'][1][2]='0.00'
+    with system['db'].transaction() as c:import_reference(c,parse_reference(tabs),'new-policy-version',str(ADMIN))
+    after=state(system,sid)
+    assert after['reference']['is_active'] is False
+    assert after['policy']['arithmetic_tolerance_minor']==100  # not today's rule
+    assert after['decision']['reason_code']=='ACCEPTED'  # history is not undone
+
+
+def test_duplicate_link_is_ownership_scoped_and_never_commits_twice(system):
+    sid,_=upload(system);system['pipeline'].process_once()
+    original_rid=state(system,sid)['revision']['id']
+    duplicate,_=upload(system);system['pipeline'].process_once();data=state(system,duplicate)
+    assert data['duplicate_record']['submission_id']==str(sid)
+    assert data['decision']['reason_code']=='DUPLICATE' and data['timing']['stages']==[]
+    system['client'].cookies.set(COOKIE,'other')
+    other,_=upload(system);system['pipeline'].process_once();data=state(system,other)
+    assert data['duplicate_record'] is None and data['decision']['commitment']=='not_recorded'
+    assert system['client'].get(f'/api/submissions/{sid}/revisions/{original_rid}').status_code==404
+    system['client'].cookies.set(COOKIE,'admin')
+    assert state(system,other)['duplicate_record']['submission_id']==str(sid)
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==1
+
+
+def test_revision_readback_cannot_cross_invoice_or_uploader(system):
+    sid,_=upload(system);system['pipeline'].process_once();data=state(system,sid);rid=data['revision']['id']
+    endpoint=f'/api/submissions/{sid}/revisions/{rid}'
+    record=system['client'].get(endpoint);assert record.status_code==200
+    assert record.json()['previous_revision'] is None and record.json()['validation']['id']==data['validation']['id']
+    another,_=upload(system)
+    assert system['client'].get(f'/api/submissions/{another}/revisions/{rid}').status_code==404
+    system['client'].cookies.set(COOKIE,'other');assert system['client'].get(endpoint).status_code==404
+    system['client'].cookies.set(COOKIE,'admin');assert system['client'].get(endpoint).status_code==200
+
+
+def test_workspace_metrics_are_database_aggregates_and_role_scoped(system):
+    sid,_=upload(system);system['pipeline'].process_once()
+    owner=system['owner']
+    owner.execute("UPDATE app.processing_runs SET started_at='2026-11-01T10:00:00Z',finished_at='2026-11-01T10:00:10Z' WHERE submission_id=%s",(sid,))
+    for vendor,seconds,status in [('Beta Consulting Pvt Ltd',90,'needs_review'),('Acme Services Pvt Ltd',1,'rejected')]:
+        item=uuid4()
+        owner.execute('''INSERT INTO app.submissions(id,uploaded_by,request_key,original_filename,mime_type,file_sha256,byte_size,status)
+          VALUES(%s,%s,%s,'historical.pdf','application/pdf',%s,10,%s)''',(item,USER,uuid4(),sha256(str(item).encode()).hexdigest(),status))
+        revision=owner.execute('''INSERT INTO app.invoice_revisions(submission_id,revision_no,kind,vendor_name,currency)
+          VALUES(%s,1,'extraction',%s,'INR') RETURNING id''',(item,vendor)).fetchone()['id']
+        owner.execute('UPDATE app.submissions SET current_revision_id=%s WHERE id=%s',(revision,item))
+        owner.execute('''INSERT INTO app.processing_runs(submission_id,pipeline_version,state,stage,started_at,finished_at)
+          VALUES(%s,'historical','completed','needs_review','2026-11-01T10:00:00Z','2026-11-01T10:00:00Z'::timestamptz+%s*interval '1 second')''',(item,seconds))
+    owner.commit()
+    w=system['client'].get('/api/workspace').json();groups=w['company_totals']
+    assert sum(x['outcome_count'] for x in groups)==3 and sum(x['straight_through_count'] for x in groups)==1
+    assert next(x for x in w['timing_groups'] if x['all_vendors'])['median_seconds']==10
+    assert next(x for x in w['timing_groups'] if not x['all_vendors'] and x['vendor_code']=='V-ACME')['median_seconds']==5.5
+    assert sum(x['rejected_count'] for x in groups)==1
+    system['client'].cookies.set(COOKIE,'other');other=system['client'].get('/api/workspace').json()
+    assert other['total_count']==0 and other['timing_groups']==[]
+    system['client'].cookies.set(COOKIE,'admin');assert system['client'].get('/api/workspace').json()['total_count']==3
+
+
+def test_user_requested_recovery_is_not_counted_as_straight_through(system):
+    from app.extraction import ExtractionError
+    sid,_=upload(system)
+    with patch.object(system['extractor'],'extract',side_effect=ExtractionError('EXTRACTION_PROVIDER_BUSY')):
+        system['pipeline'].process_once()
+    assert state(system,sid)['submission']['status']=='processing_failed'
+    assert system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN}).status_code==202
+    system['pipeline'].process_once();assert state(system,sid)['acceptance']['method']=='automatic'
+    groups=system['client'].get('/api/workspace').json()['company_totals']
+    assert sum(x['straight_through_count'] for x in groups)==0
+
+
 def test_upload_request_idempotence_and_reused_key_conflict(system):
     key=uuid4();sid,_=upload(system,request_key=key)
     same,_=upload(system,request_key=key)
@@ -1003,6 +1083,12 @@ def test_admin_line_mapping_preserves_source_and_needs_explicit_acceptance(syste
     result=state(system,sid);assert result['validation']['verdict']=='eligible' and result['acceptance'] is None
     assert result['validation']['acceptance_mode']=='admin_required'
     assert result['revision']['evidence']['candidate']==value.model_dump(mode='json')
+    history=system['client'].get(f"/api/submissions/{sid}/revisions/{result['revision']['id']}")
+    assert history.status_code==200
+    assert history.json()['previous_revision']['id']==before['revision']['id']
+    assert history.json()['previous_revision']['candidate']==value.model_dump(mode='json')
+    assert history.json()['reviewer']['id']==str(ADMIN)
+    assert history.json()['validation']['verdict']=='eligible'
     ctx=result['revision']['evidence']['review_context']
     assert ctx['actor_id']==str(ADMIN) and ctx['base_revision_id']==before['revision']['id']
     assert ctx['source_sha256']==result['submission']['file_sha256']

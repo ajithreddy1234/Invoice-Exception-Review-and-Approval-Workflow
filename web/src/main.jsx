@@ -10,9 +10,12 @@ import {
   publicationLabel,
   uploadError,
   parseRoute,
-  decisionSummary,
 } from "./model.js";
-import { SourceViewer, ReviewEditor, ReviewResolution } from "./ReviewWorkbench.jsx";
+import {
+  SourceViewer,
+  ReviewEditor,
+  ReviewResolution,
+} from "./ReviewWorkbench.jsx";
 import "./styles.css";
 import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
 import { apiRequest } from "./api.js";
@@ -20,6 +23,11 @@ import BrandMark from "./BrandMark.jsx";
 import LogoutControl from "./LogoutControl.jsx";
 import Checks, { StatusBadge as Badge } from "./InvoiceChecks.jsx";
 import { reviewGuidance } from "./review-guidance.js";
+import DecisionOverview, {
+  RunTimeline,
+  PolicyEvidence,
+} from "./DecisionOverview.jsx";
+import RevisionHistory from "./RevisionHistory.jsx";
 import { useInvoiceRegister } from "./useInvoiceRegister.js";
 
 const dateTime = (value) =>
@@ -39,7 +47,6 @@ const amount = (value, currency = "INR") =>
         currency,
         minimumFractionDigits: 2,
       }).format(Number(value) / 100);
-
 
 function ErrorBox({ children }) {
   return children ? (
@@ -99,8 +106,10 @@ function Login({ onLogin, initialError, request }) {
             <br />A clear decision.
           </h1>
           <p>
-            Match invoices to approved procurement records, inspect the source
-            evidence and keep a traceable acceptance history.
+            Review vendor invoices against approved procurement records.
+            Complete matches can be accepted automatically; uncertainty goes to
+            a reviewer with source evidence. This workflow records decisions and
+            PO commitments; it does not execute payment.
           </p>
           <div className="process-list">
             <span>
@@ -228,7 +237,11 @@ function Upload({ onUpload, request }) {
       <div className="upload-content">
         <h2>Verify an invoice</h2>
         <p>PDF, JPG or PNG · Up to 5 MiB and 3 pages · English documents</p>
-        <p className="small-muted">Originals are stored privately for up to seven days. Extracted page text is sent to Google Gemini for field extraction. Upload only documents your organization has authorized for that service.</p>
+        <p className="small-muted">
+          Originals are stored privately for up to seven days. Extracted page
+          text is sent to Google Gemini for field extraction. Upload only
+          documents your organization has authorized for that service.
+        </p>
         <div className="file-controls">
           <label className="file-label">
             Choose invoice
@@ -343,7 +356,6 @@ function Evidence({ revision }) {
   );
 }
 
-
 function ReviewActions({ data, user, request, onUpdate }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState("");
@@ -383,9 +395,19 @@ function ReviewActions({ data, user, request, onUpdate }) {
       <div className="section-heading">
         <h3>{user.role === "admin" ? "Review actions" : "Next step"}</h3>
       </div>
-      {guidance ? <div className="review-guidance" role="note"><strong>{guidance.title}</strong><p>{guidance.message}</p></div> : <p className="muted">
-        Compare the failed checks with the source and approved procurement records. Missing or unreadable critical information needs a clearer original. An administrator cannot waive duplicates or financial limits.
-      </p>}
+      {guidance ? (
+        <div className="review-guidance" role="note">
+          <strong>{guidance.title}</strong>
+          <p>{guidance.message}</p>
+        </div>
+      ) : (
+        <p className="muted">
+          Compare the failed checks with the source and approved procurement
+          records. Missing or unreadable critical information needs a clearer
+          original. An administrator cannot waive duplicates or financial
+          limits.
+        </p>
+      )}
       <ErrorBox>{error}</ErrorBox>
       {user.role === "admin" && (allowed || rejectable) && (
         <label>
@@ -481,7 +503,11 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
           <div>
             <span className="eyebrow muted">INVOICE RECORD</span>
             <h2>{filename}</h2>
-            {revision?.invoice_number && <p className="small-muted">Invoice number · {revision.invoice_number}</p>}
+            {revision?.invoice_number && (
+              <p className="small-muted">
+                Invoice number · {revision.invoice_number}
+              </p>
+            )}
           </div>
           <button
             className="icon-button"
@@ -492,14 +518,7 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
             ↻
           </button>
         </div>
-        <div className="decision-badges">
-          <Badge value={accepted ? "accepted" : submission.status} />
-          {accepted && (
-            <Badge value={publicationStatus || "pending"}>
-              {publicationLabel(publicationStatus, true)}
-            </Badge>
-          )}
-        </div>
+        <DecisionOverview data={data} />
         {accepted ? (
           <>
             <p className="decision-summary">
@@ -507,10 +526,6 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
               <strong>
                 {amount(acceptance.amount_minor, acceptance.currency)}
               </strong>
-            </p>
-            <p className="muted">
-              The acceptance is recorded.{" "}
-              {publicationLabel(publicationStatus, true)}.
             </p>
             <code className="record-id">Acceptance ID · {acceptance.id}</code>
           </>
@@ -529,9 +544,7 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
               </code>
             )}
           </>
-        ) : (
-          <p className="decision-summary">{decisionSummary(data)}</p>
-        )}
+        ) : null}
         {run && (
           <div className="stage-line">
             <span
@@ -539,15 +552,27 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
                 activeRun(data) ? "activity-dot active" : "activity-dot"
               }
             />
-            <strong>{run.stage === "retrying_extraction" ? "Extraction service busy · retrying once" : human(run.stage || run.state)}</strong>
+            <strong>
+              {run.stage === "retrying_extraction"
+                ? "Extraction service busy · retrying once"
+                : human(run.stage || run.state)}
+            </strong>
             <span>{human(run.state)}</span>
           </div>
         )}
         {revision?.evidence?.extractor?.origin === "cache" && (
-          <div className="notice" role="status"><strong>Using saved extraction</strong><p>The saved reading of this invoice was reused. Its source evidence and all nine checks were verified again against current records.</p></div>
+          <div className="notice" role="status">
+            <strong>Using saved extraction</strong>
+            <p>
+              The saved reading of this invoice was reused. Its source evidence
+              and all nine checks were verified again against current records.
+            </p>
+          </div>
         )}
         {revision?.evidence?.extractor?.origin === "provider" && (
-          <p className="small-muted">Invoice details read from the original source for this revision.</p>
+          <p className="small-muted">
+            Invoice details read from the original source for this revision.
+          </p>
         )}
         {publication?.last_error && (
           <div className="notice warning-note">
@@ -598,6 +623,8 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
           </div>
         )}
       </section>
+      <RunTimeline data={data} />
+      <PolicyEvidence data={data} />
       <div className="review-workspace">
         <SourceViewer key={submission.id} data={data} />
         <section className="section-card">
@@ -625,6 +652,11 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
         onUpdate={onUpdate}
       />
       <ReviewResolution data={data} />
+      <RevisionHistory
+        key={`history-${submission.id}`}
+        data={data}
+        request={request}
+      />
       <section className="section-card">
         <div className="section-heading">
           <h3>Source evidence</h3>
@@ -656,7 +688,7 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
         {!duplicateProof && <Evidence revision={revision} />}
       </section>
       <ReviewActions
-        key={submission.id}
+        key={`actions-${submission.id}`}
         data={data}
         user={user}
         request={request}
@@ -691,7 +723,11 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
       <section className="section-card">
         <div className="section-heading">
           <h3>Activity history</h3>
-          <span className="small-muted">Recorded events</span>
+          <span className="small-muted">
+            {data.audit_event_count > 100
+              ? `Latest 100 of ${data.audit_event_count} recorded events`
+              : "Recorded events"}
+          </span>
         </div>
         {data.audit?.length ? (
           <ol className="timeline">
@@ -782,10 +818,40 @@ function AdminPanel({ request, onRefresh }) {
             </p>
           )}
           <div className="health-grid">
-            {health && <>
-              <div className="health-item"><span>Startup checks</span><Badge value={health.startup_complete && health.startup !== "reference_import_failed" ? "pass" : "pending"}>{human(health.startup)}</Badge></div>
-              <div className="health-item"><span>Invoice workers</span><Badge value={health.workers_running && !Object.values(health.worker_errors || {}).some(Boolean) ? "pass" : "pending"}>{!health.workers_running ? "Starting or disabled" : Object.values(health.worker_errors || {}).some(Boolean) ? "Dependency retry pending" : "Running"}</Badge></div>
-            </>}
+            {health && (
+              <>
+                <div className="health-item">
+                  <span>Startup checks</span>
+                  <Badge
+                    value={
+                      health.startup_complete &&
+                      health.startup !== "reference_import_failed"
+                        ? "pass"
+                        : "pending"
+                    }
+                  >
+                    {human(health.startup)}
+                  </Badge>
+                </div>
+                <div className="health-item">
+                  <span>Invoice workers</span>
+                  <Badge
+                    value={
+                      health.workers_running &&
+                      !Object.values(health.worker_errors || {}).some(Boolean)
+                        ? "pass"
+                        : "pending"
+                    }
+                  >
+                    {!health.workers_running
+                      ? "Starting or disabled"
+                      : Object.values(health.worker_errors || {}).some(Boolean)
+                        ? "Dependency retry pending"
+                        : "Running"}
+                  </Badge>
+                </div>
+              </>
+            )}
             {health?.configured &&
               Object.entries(health.configured).map(([key, value]) => (
                 <div className="health-item" key={key}>
@@ -816,7 +882,12 @@ function AdminPanel({ request, onRefresh }) {
               </div>
             )}
           </div>
-          {health?.capacity_limits && <p className="small-muted">Pending-work limits: {health.capacity_limits.per_user} per user · {health.capacity_limits.workspace} for the workspace.</p>}
+          {health?.capacity_limits && (
+            <p className="small-muted">
+              Pending-work limits: {health.capacity_limits.per_user} per user ·{" "}
+              {health.capacity_limits.workspace} for the workspace.
+            </p>
+          )}
           {reference?.imported_at && (
             <p className="small-muted">
               Last imported {dateTime(reference.imported_at)}
@@ -1048,7 +1119,11 @@ function App() {
   ]);
   const register = useInvoiceRegister({
     enabled: Boolean(user && page === "invoices" && !selected),
-    request, user, status: filter, vendor: listVendor, search,
+    request,
+    user,
+    status: filter,
+    vendor: listVendor,
+    search,
   });
   const refresh = async () => {
     register.refresh();
@@ -1079,7 +1154,11 @@ function App() {
   if (starting)
     return (
       <div className="app-loading" role="status">
-        <BrandMark /><div><strong>Opening your workspace…</strong><p>Checking your session and connecting to the workspace.</p></div>
+        <BrandMark />
+        <div>
+          <strong>Opening your workspace…</strong>
+          <p>Checking your session and connecting to the workspace.</p>
+        </div>
       </div>
     );
   if (!user)
@@ -1320,7 +1399,10 @@ function App() {
                     {workspace?.scope === "company"
                       ? "All workspace uploads"
                       : "Your uploads"}{" "}
-                    · {visible.length} shown{register.total !== null ? ` of ${register.total} matching` : ""}
+                    · {visible.length} shown
+                    {register.total !== null
+                      ? ` of ${register.total} matching`
+                      : ""}
                     {register.loading ? " · Updating…" : ""}
                   </p>
                 </div>
@@ -1499,11 +1581,28 @@ function App() {
                     </Empty>
                   ))}
               </div>
-              <nav className="register-pagination" aria-label="Invoice list pages">
-                <span className="small-muted">Page {register.page} · Search covers the full invoice history</span>
+              <nav
+                className="register-pagination"
+                aria-label="Invoice list pages"
+              >
+                <span className="small-muted">
+                  Page {register.page} · Search covers the full invoice history
+                </span>
                 <div>
-                  <button className="secondary" disabled={register.loading || !register.hasPrevious} onClick={register.previous}>← Previous</button>
-                  <button className="secondary" disabled={register.loading || !register.hasNext} onClick={register.next}>Next →</button>
+                  <button
+                    className="secondary"
+                    disabled={register.loading || !register.hasPrevious}
+                    onClick={register.previous}
+                  >
+                    ← Previous
+                  </button>
+                  <button
+                    className="secondary"
+                    disabled={register.loading || !register.hasNext}
+                    onClick={register.next}
+                  >
+                    Next →
+                  </button>
                 </div>
               </nav>
             </section>

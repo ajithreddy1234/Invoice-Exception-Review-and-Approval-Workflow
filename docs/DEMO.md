@@ -36,10 +36,25 @@ accepting the final INR 4,000 consumes the remaining budget and changes later
 outcomes. Each pack's scan uses its own PO so the earlier clean acceptance does
 not mask source uncertainty with an already-consumed PO.
 
-Keep the recording to five minutes: orient/login, upload the clean PDF, show
-acceptance plus published report, demonstrate a duplicate and one or two review
-cases, then explain the dashboard and audit history. Clearly label historical
-records if using them while a live run finishes.
+Keep the recording to five minutes. Use two deliberate exceptions, rather than
+rushing through the whole fixture set:
+
+| Time | Show |
+| --- | --- |
+| 0:00–0:30 | The buyer's problem: verify supplier charges without silently overspending a PO. The model extracts; code decides. |
+| 0:30–1:45 | One fresh clean extraction, saved stage timestamps, nine checks, the acceptance ID and its matching Sheet report row. |
+| 1:45–2:30 | Duplicate blocked; no second PO commitment. Follow the prior-record link only if the account has access. |
+| 2:30–4:15 | Ambiguous PO: inspect the exact candidates, select the supported one with a reason, save and revalidate, then explicitly accept separately. Show the saved revision. |
+| 4:15–5:00 | Dashboard outcomes, straight-through acceptance definition and timing sample; state the key limitations. |
+
+Choose the admin line-mapping example below instead of ambiguous PO if it better
+explains the business. Rehearse actual extraction/publication timing. If a live
+run needs longer, label any historical record you show; never substitute fake
+progress or describe cached extraction as fresh.
+
+A blurred **missing payable total is not the admin-acceptance example**. It must
+stay held while a clearer source is requested. An admin can confirm a grounded
+OCR confidence warning, but cannot derive a missing total from a PO or arithmetic.
 
 ## Explain the decisions
 
@@ -90,18 +105,18 @@ invoice, currency conversion or ERP integration. Host sleep and model quotas are
 deployment dependencies. The native tests reproduce concurrency/rollback evidence
 in an isolated local Postgres database without resetting cloud data.
 
-## Controlled admin example (local v0.10 candidate)
+## Controlled admin example
 
 Pack D includes `08_admin_line_review.pdf` and an independent REVIEW PO. Its
 printed description is abbreviated; all units, quantities and prices remain
-supported. In the candidate, open admin review, map line 1 to SERVICE, give the
+supported. Open admin review, map line 1 to SERVICE, give the
 business/evidence reason and save. Show that acceptance is still empty, then use
 the separate explicit acceptance action and inspect the recorded mapping. No
 printed field is rewritten to match the PO.
 
-Pack D has not been imported into the hosted workspace by this local change.
-Use it on the hosted application only after the candidate release and matching
-reference import are explicitly approved. New packs can include this example:
+Do not assume Pack D is unused or imported. Inspect the actual active references,
+history and remaining commitments first. Reference imports and financial writes
+need the workspace owner's authorization. New packs can include this example:
 
 ```sh
 .venv/bin/python tools/generate_fixtures.py --pack E --admin-review
@@ -111,3 +126,13 @@ The normal source-only preparation tool can plan E's additive rows. Do not apply
 changes or reset accepted records just to make a rehearsal appear fresh. For a
 five-minute recording, prioritize a fresh clean acceptance, a duplicate and one
 reasoned admin resolution; use other edge cases during the live walkthrough.
+
+## Additional input-layout evidence
+
+`tests/fixtures/layouts/` contains eight clearly labelled synthetic inputs:
+ReportLab card/table layouts, actual LibreOffice Writer PDF exports, a rasterized
+scan and a simulated rotated photograph. See its README for independent-ledger
+requirements. These are robustness tests, not claims of supplier authenticity or
+real Zoho/Stripe exports. The evaluation script can exercise real Gemini without
+writing an acceptance or a spreadsheet row. Neither manifest expectations nor
+reference PO data are sent to the model.

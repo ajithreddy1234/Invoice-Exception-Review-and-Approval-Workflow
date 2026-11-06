@@ -14,7 +14,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[1]
-ROOT_FILES = {'.gitignore', '.dockerignore', '.env.example', 'Dockerfile', 'render.yaml',
+ROOT_FILES = {'.gitignore', '.gitattributes', '.dockerignore', '.env.example', 'Dockerfile', 'render.yaml',
               'README.md', 'pyproject.toml', 'uv.lock', 'requirements.txt',
               'package.json', 'package-lock.json', 'extraction.schema.json'}
 TREES = ('app', 'scripts', 'migrations', 'tests', 'tools', 'docs', 'web/src')

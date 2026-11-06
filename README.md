@@ -1,5 +1,11 @@
 # ASA Invoice Review
 
+For an accounts-payable team: upload a supplier invoice and see a reasoned
+decision, its source evidence and the effect on the purchase order. Complete
+matches can be accepted automatically; a reviewer handles uncertainty with
+recorded evidence. Missing totals stay unknown and financial limits remain binding.
+Acceptance records a PO commitment; it does not authorize or execute payment.
+
 Review invoice PDFs against procurement records maintained in Google Sheets.
 The app extracts fields with page/quote evidence, runs nine deterministic checks,
 and records eligible acceptances transactionally in Postgres. It does not execute
@@ -8,6 +14,10 @@ payments.
 [Open the application](https://asa-invoice-review.onrender.com) ·
 [Deployment](docs/DEPLOYMENT.md) · [Operations](docs/OPERATIONS.md) ·
 [Case-study and company readiness](docs/PRODUCTION-READINESS.md)
+
+[Design decisions](docs/DESIGN-DECISIONS.md) ·
+[Assumptions](docs/ASSUMPTIONS.md) · [AI use](docs/AI-USE.md) ·
+[Metrics and timings](docs/METRICS.md)
 
 ## Workspace access
 
@@ -51,6 +61,18 @@ starts a new page sequence. Normal users remain scoped to their own records.
 The four primary scenarios are duplicates, partial invoicing/overbilling,
 ambiguous PO matching and unreadable critical fields. Supporting tests cover tax,
 rounding, missing data, vendor aliases, concurrency and failure recovery.
+
+The run view explains the primary reason, next action and financial effect,
+separating the decision from the actual commitment and spreadsheet report.
+Saved server events supply stage timestamps and durations. Dashboard outcomes,
+straight-through acceptance and median processing time use scoped database
+aggregates with visible definitions. Revision history preserves prior values,
+quotes, reviewer identity and reason; inspecting history cannot approve a record.
+
+[Varied synthetic inputs](tests/fixtures/layouts/README.md) add card/table layouts,
+actual Writer exports, slash dates, a real rasterized scan and a simulated photo.
+They supplement the repeatable demo packs; they are not supplier-authenticity
+tests or guaranteed approvals in an already-used ledger.
 
 ## Architecture
 
@@ -137,6 +159,8 @@ Never delete acceptances or rewrite report rows to rehearse.
 
 See the [release checklist](docs/RELEASE-CHECKLIST.md) for local versus hosted
 verification boundaries and the complete review-before-deployment gate.
+The [v0.12 case-study update](docs/CASE-STUDY-UPDATE.md) records this local
+candidate's changes and evidence separately from the hosted v0.11 verification.
 
 ```sh
 .venv/bin/python -m pytest -q

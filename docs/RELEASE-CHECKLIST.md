@@ -6,6 +6,13 @@ rollback branch/deployment are retained. The checklist below governs subsequent
 releases: review the complete candidate before production updates. A local server
 with the normal .env may point at hosted data; it is not isolated staging.
 
+The v0.12 local candidate is described in [CASE-STUDY-UPDATE.md](CASE-STUDY-UPDATE.md).
+It has no schema or financial-rule changes. Its browser walkthrough used the
+actual React/API with a disposable native Postgres database and real PDF/OCR;
+external Auth/model/publication were explicitly simulated. A separate eight-input
+fresh Gemini evaluation made no database or spreadsheet writes. Neither check
+replaces the hosted release gate below.
+
 ## Claims from the external reviews
 
 | Review concern | Current evidence/status |
@@ -46,8 +53,9 @@ No harness ships in the application or source archive.
 1. Review the complete local diff and credential scan; release the complete
    frontend/backend together. No schema migration is required.
 2. Choose a truly unused pack. Check existing references and commitments first.
-   Pack D's matching rows have NOT been imported into the hosted Sheet/database
-   by this local work. Plan the additive import, inspect it, then apply only as
+   This v0.12 local work performs no hosted reference imports. Inspect actual
+   imported rows and usage; do not assume a named pack is available. Plan any
+   additive import, inspect it, then apply only as
    part of the approved release/rehearsal. Existing rows/acceptances are preserved.
 3. Verify deployed version and exact assets, real admin/user login and role/owner
    boundaries, dependency readiness, fresh reference import and private source.

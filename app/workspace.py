@@ -20,7 +20,13 @@ WITH actor AS MATERIALIZED (
    coalesce(r.total_gross_minor,dup.amount_minor) AS requested_minor,a.amount_minor AS accepted_minor,
    coalesce(a.po_code,p.po_code,dup.po_code) AS po_code,
    coalesce(a.vendor_code,p.vendor_code,m.vendor_code,dup.vendor_code) AS vendor_code,
-   r.vendor_name AS printed_vendor_name
+   r.vendor_name AS printed_vendor_name,
+   a.method AS acceptance_method,
+   EXISTS(SELECT 1 FROM app.review_actions h WHERE h.submission_id=s.id)
+    OR EXISTS(SELECT 1 FROM app.audit_events h WHERE h.submission_id=s.id AND h.event_type='processing.retry_requested') AS human_intervention,
+   (SELECT extract(epoch FROM (pr.finished_at-pr.started_at)) FROM app.processing_runs pr
+    WHERE pr.submission_id=s.id AND pr.state='completed' AND pr.stage<>'admin_revalidated'
+     AND pr.finished_at>=pr.started_at ORDER BY pr.created_at DESC LIMIT 1) AS processing_seconds
  FROM app.submissions s CROSS JOIN actor u
  LEFT JOIN app.invoice_revisions r ON r.id=s.current_revision_id
  LEFT JOIN app.acceptances a ON a.submission_id=s.id
@@ -50,6 +56,13 @@ WORKSPACE_SQL = INVOICE_SCOPE_SQL + r'''
    count(*) FILTER(WHERE status IN ('needs_review','reference_hold')) AS review_count,
    count(*) FILTER(WHERE status='blocked_duplicate') AS duplicate_count,
    count(*) FILTER(WHERE status IN ('received','processing')) AS processing_count,
+   count(*) FILTER(WHERE status='rejected') AS rejected_count,
+   count(*) FILTER(WHERE status='processing_failed') AS failed_count,
+   count(*) FILTER(WHERE status='expired') AS expired_count,
+   count(*) FILTER(WHERE status NOT IN ('received','processing')) AS outcome_count,
+   count(*) FILTER(WHERE acceptance_method='automatic' AND NOT human_intervention) AS straight_through_count,
+   count(processing_seconds) AS timing_sample_count,
+   percentile_cont(0.5) WITHIN GROUP (ORDER BY processing_seconds) AS median_processing_seconds,
    coalesce(sum(accepted_minor),0) AS accepted_minor,
    coalesce(sum(requested_minor) FILTER(WHERE status IN ('needs_review','reference_hold')),0) AS review_minor,
    count(*) FILTER(WHERE status IN ('needs_review','reference_hold') AND requested_minor IS NULL) AS unreadable_amount_count,
@@ -70,6 +83,17 @@ WORKSPACE_SQL = INVOICE_SCOPE_SQL + r'''
  FROM app.reference_pos p JOIN active a ON p.reference_version_id=a.id
  JOIN vendors v ON v.vendor_code=p.vendor_code LEFT JOIN po_used b ON b.po_code=p.po_code
  WHERE EXISTS(SELECT 1 FROM actor WHERE role='admin')
+), metric_currencies AS (
+ SELECT currency FROM named WHERE currency IS NOT NULL
+ UNION SELECT currency FROM app.reference_rules r JOIN active a ON a.id=r.reference_version_id
+ UNION SELECT 'INR'
+), timing_groups AS (
+ SELECT c.currency,n.vendor_code,grouping(n.vendor_code)=1 AS all_vendors,
+  count(*) AS sample_count,
+  percentile_cont(0.5) WITHIN GROUP (ORDER BY n.processing_seconds) AS median_seconds
+ FROM metric_currencies c JOIN named n ON n.currency=c.currency OR n.currency IS NULL
+ WHERE n.processing_seconds IS NOT NULL
+ GROUP BY GROUPING SETS ((c.currency,n.vendor_code),(c.currency))
 ), daily AS (
  SELECT (created_at AT TIME ZONE 'UTC')::date AS day,currency,vendor_code,count(*) AS invoice_count,
    count(*) FILTER(WHERE status='accepted') AS accepted_count,
@@ -82,6 +106,7 @@ SELECT (SELECT to_jsonb(u) FROM actor u) AS actor,
    (SELECT * FROM named ORDER BY created_at DESC LIMIT 200) n),'[]') AS items,
  (SELECT count(*) FROM named) AS total_count,
  coalesce((SELECT jsonb_agg(to_jsonb(c)) FROM company c),'[]') AS company_totals,
+ coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM timing_groups t),'[]') AS timing_groups,
  coalesce((SELECT jsonb_agg(to_jsonb(v) ORDER BY v.legal_name) FROM directory v),'[]') AS vendors,
  coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.vendor_name,p.po_code) FROM po_balances p),'[]') AS po_balances,
  coalesce((SELECT jsonb_agg(to_jsonb(d) ORDER BY d.day) FROM daily d),'[]') AS daily,

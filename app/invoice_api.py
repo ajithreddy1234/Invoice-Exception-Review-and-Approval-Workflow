@@ -9,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 from .auth import Actor, current_actor, require_admin
 from .extraction import MAX_BYTES
 from .processing import PIPELINE_VERSION, audit, transition
+from .decision_view import explain_decision, recorded_timing
 
 router = APIRouter()
 
@@ -99,6 +100,27 @@ SELECT to_jsonb(s)-'storage_key' AS submission,
   'is_active',EXISTS(SELECT 1 FROM app.runtime_state t WHERE t.singleton AND t.active_reference_version_id=r.id))
   FROM app.validation_results v JOIN app.reference_versions r ON r.id=v.reference_version_id
   WHERE v.submission_id=s.id ORDER BY v.created_at DESC LIMIT 1) AS reference,
+ (SELECT jsonb_build_object('reference_version_id',v.reference_version_id,'currency',r.currency,'po_currency',p.currency,
+  'billing_mode',p.billing_mode,'authorized_gross_minor',p.authorized_gross_minor,
+  'auto_accept_enabled',r.auto_accept_enabled,'arithmetic_tolerance_minor',r.arithmetic_tolerance_minor,
+  'price_tolerance_bps',r.price_tolerance_bps)
+  FROM app.validation_results v JOIN app.reference_pos p
+  ON p.reference_version_id=v.reference_version_id AND p.po_code=v.po_code
+  JOIN app.invoice_revisions ir ON ir.id=v.revision_id
+  JOIN app.reference_rules r ON r.reference_version_id=p.reference_version_id AND r.currency=ir.currency
+  WHERE v.submission_id=s.id ORDER BY v.created_at DESC LIMIT 1) AS policy,
+ (SELECT jsonb_build_object('submission_id',a.submission_id,'acceptance_id',a.id,'invoice_number',a.invoice_number)
+  FROM app.acceptances a JOIN app.submissions original ON original.id=a.submission_id
+  WHERE s.status='blocked_duplicate' AND (a.document_sha256=s.file_sha256 OR EXISTS
+    (SELECT 1 FROM app.invoice_revisions r WHERE r.id=s.current_revision_id
+     AND app.invoice_key(r.invoice_number)=a.normalized_invoice_number
+     AND EXISTS(SELECT 1 FROM app.validation_results v JOIN app.reference_pos p
+       ON p.reference_version_id=v.reference_version_id AND p.po_code=v.po_code
+       WHERE v.submission_id=s.id AND p.vendor_code=a.vendor_code)))
+  AND (original.uploaded_by=s.uploaded_by OR %s='admin') LIMIT 1) AS duplicate_record,
+ coalesce((SELECT jsonb_agg(to_jsonb(e) ORDER BY e.id) FROM app.audit_events e
+  WHERE e.run_id=(SELECT r.id FROM app.processing_runs r WHERE r.submission_id=s.id ORDER BY r.created_at DESC LIMIT 1)
+  AND e.event_type='processing.stage'),'[]') AS stage_events,
  coalesce((SELECT jsonb_agg(jsonb_build_object('id',r.id,'revision_no',r.revision_no,'kind',r.kind,
   'reason',r.correction_reason,'created_at',r.created_at) ORDER BY r.revision_no DESC)
   FROM app.invoice_revisions r WHERE r.submission_id=s.id),'[]') AS revisions,
@@ -108,16 +130,34 @@ SELECT to_jsonb(s)-'storage_key' AS submission,
   'published_at',e.published_at,'sheet_range',e.sheet_range)
   FROM app.export_tasks e JOIN app.acceptances a ON a.id=e.acceptance_id WHERE a.submission_id=s.id) AS publication,
  coalesce((SELECT jsonb_agg(to_jsonb(e)-'id' ORDER BY e.id) FROM
-  (SELECT id,event_type,stage,details,created_at FROM app.audit_events WHERE submission_id=s.id ORDER BY id LIMIT 100) e),'[]') AS audit
+  (SELECT id,run_id,event_type,stage,details,created_at FROM app.audit_events WHERE submission_id=s.id ORDER BY id DESC LIMIT 100) e),'[]') AS audit,
+ (SELECT count(*) FROM app.audit_events WHERE submission_id=s.id) AS audit_event_count
 FROM app.submissions s WHERE s.id=%s AND (%s='admin' OR s.uploaded_by=%s)
 """
 
 
 @router.get('/api/submissions/{sid}')
 def detail(sid: UUID,request: Request,actor: Actor = Depends(current_actor)):
-    result=request.app.state.db.read_one(DETAIL_SQL,(sid,actor.role,actor.id))
+    result=request.app.state.db.read_one(DETAIL_SQL,(actor.role,sid,actor.role,actor.id))
     if not result:
         raise HTTPException(404,'SUBMISSION_NOT_FOUND')
+    result['decision']=explain_decision(result)
+    result['timing']=recorded_timing(result.get('run'),result.pop('stage_events',[]))
+    return result
+
+
+@router.get('/api/submissions/{sid}/revisions/{rid}')
+def revision_detail(sid: UUID,rid: UUID,request: Request,actor: Actor=Depends(current_actor)):
+    # Both IDs are scoped before returning any historical source or reviewer data.
+    result=request.app.state.db.read_one('''SELECT to_jsonb(r) AS revision,
+      (SELECT jsonb_build_object('id',p.id,'revision_no',p.revision_no,'candidate',p.evidence->'candidate')
+       FROM app.invoice_revisions p WHERE p.submission_id=r.submission_id AND p.revision_no<r.revision_no
+       ORDER BY p.revision_no DESC LIMIT 1) AS previous_revision,
+      (SELECT to_jsonb(v) FROM app.validation_results v WHERE v.revision_id=r.id ORDER BY v.created_at DESC LIMIT 1) AS validation,
+      (SELECT jsonb_build_object('id',p.user_id,'display_name',p.display_name) FROM app.profiles p WHERE p.user_id=r.created_by) AS reviewer
+      FROM app.invoice_revisions r JOIN app.submissions s ON s.id=r.submission_id
+      WHERE r.id=%s AND s.id=%s AND (%s='admin' OR s.uploaded_by=%s)''',(rid,sid,actor.role,actor.id))
+    if not result:raise HTTPException(404,'REVISION_NOT_FOUND')
     return result
 
 
