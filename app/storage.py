@@ -6,6 +6,7 @@ choose the object key; this privileged client does not implement ownership.
 from __future__ import annotations
 
 from hashlib import sha256
+import json
 import re
 from urllib.parse import quote, urlsplit
 
@@ -96,12 +97,32 @@ class StorageGateway:
         except httpx.HTTPError:
             raise StorageError('STORAGE_UPLOAD_UNAVAILABLE') from None
 
+    @staticmethod
+    def _missing(response) -> bool:
+        if response.status_code == 404:
+            return True
+        if response.status_code != 400:
+            return False
+        # Some Storage gateway versions wrap a missing object as HTTP 400 with
+        # JSON statusCode 404. Parse only a bounded error body; other 400s stay
+        # unavailable/configuration errors and must not be treated as deletion.
+        body = bytearray()
+        for chunk in response.iter_bytes(chunk_size=1024):
+            if len(body) + len(chunk) > 4096:
+                return False
+            body.extend(chunk)
+        try:
+            payload = json.loads(body)
+            return isinstance(payload, dict) and str(payload.get('statusCode')) == '404'
+        except (ValueError, TypeError):
+            return False
+
     def download(self, key: str) -> bytes:
         encoded = self._key(key)
         try:
             with self._client() as client:
                 with client.stream('GET', self._base + '/' + encoded) as response:
-                    if response.status_code == 404:
+                    if self._missing(response):
                         raise StorageNotFound('STORAGE_OBJECT_NOT_FOUND')
                     if response.status_code != 200:
                         raise StorageError('STORAGE_DOWNLOAD_UNAVAILABLE')
@@ -130,7 +151,7 @@ class StorageGateway:
                 response = client.request('DELETE', self._base, json={'prefixes': [key]})
             # Bucket removal with a specific prefix is idempotent; missing means
             # the desired final state is already reached.
-            if response.status_code not in (200, 204, 404):
+            if response.status_code not in (200, 204, 404) and not self._missing(response):
                 raise StorageError('STORAGE_DELETE_UNAVAILABLE')
         except httpx.HTTPError:
             raise StorageError('STORAGE_DELETE_UNAVAILABLE') from None

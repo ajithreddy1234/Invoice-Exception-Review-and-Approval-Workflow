@@ -1,6 +1,70 @@
 # Verification and practical limits
 
-Current v0.9.0 regression checks on 6 November 2026 (India time):
+Local candidate v0.11.0, 6 November 2026 (India time):
+
+- 306 component tests and 45 subtests passed. The 65 isolated native tests are
+  skipped by that command and all passed in their separate Postgres 16 run.
+  Those tests exercise actual PDF/OCR and transactions, with external providers
+  explicitly simulated. Existing duplicate, balance and admin-review guarantees
+  continue to pass; no SQL acceptance/schema change is introduced.
+- 26 frontend tests and the production build passed. A temporary local browser
+  harness using the actual check-list component confirmed nine checks, four
+  neutral waiting states, PO-specific guidance and no horizontal overflow at the
+  observed viewport. Its synthetic display data was labelled; this was not a
+  hosted login or financial operation. The harness is removed and not released.
+- Runtime Python audit initially reported advisories against Pillow 12.3.0.
+  Upgrading to 13.0.0 and regenerating the lock/export cleared the audit. On this
+  date, pip-audit found no known vulnerabilities in the runtime export and npm
+  audit found zero in the web dependency tree (including development packages).
+  This covers known package advisories, not all application/OS risks. Upstream
+  patch evidence: https://github.com/python-pillow/Pillow/security/advisories/GHSA-4558-3h8r-v8xp
+  and https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html .
+- Real GIF/TIFF/BMP inputs declared as JPEG/PNG are rejected before OCR or preview;
+  preview rejects the wrong declared supported type too. Valid supported-image
+  and scanned-PDF tests pass with the patched library.
+- The Linux AMD64 Docker image builds. An unconfigured, network-disabled container
+  with no credentials passes UI/liveness 200, readiness 503 and unauthenticated
+  admin denial 401. Four serial real OCR inputs (clean/blurred scan PDFs, JPEG and
+  PNG) complete under a 512 MiB / 1 CPU limit; cgroup peak is 252,600,320 bytes.
+  This is a local serial packaging/OCR check, not hosted concurrent capacity or
+  an idle Render cold-start measurement. An initial operator check used a
+  nonexistent diagnostics URL; it was corrected to the actual admin health route.
+- New regression cases cover missing/closed/wrong-vendor PO explanations,
+  dependency waiting without approval, independent currency errors, readiness
+  with missing or stopped processing dependencies, and bounded JSON-wrapped
+  Storage missing-object responses. Other provider errors stay errors.
+- Only unauthenticated hosted liveness was checked this turn: it still reports
+  v0.9.0. No cloud invoice, acceptance, reference import or report row was changed.
+  No push/deployment was performed. Hosted testing of v0.11 remains a release gate.
+
+The v0.10 and deployed observations below are historical, not additional v0.11
+measurements.
+
+Local candidate v0.10.0, 6 November 2026 (India time):
+
+- 283 components and 37 subtests passed. The 65 isolated native tests are skipped
+  by this component command and executed separately.
+- All 65 native Postgres 16 tests passed, including the complete new-pack story,
+  auditable line mapping, grounded OCR confirmation, explicit admin-only
+  acceptance, stale-reference/invalid-choice rejection, balance protection and
+  reprocessing without inherited manual permissions. External services are
+  simulated; fixture PDFs and scan OCR are real.
+- 21 frontend tests and the production build passed. The actual review components
+  were checked in a temporary simulated-API browser harness for request payload,
+  unchanged source wording, role restrictions, edit/cancel/reopen resets and
+  recorded resolution. This harness is excluded and removed.
+- A Linux AMD64 Docker image builds. An unconfigured container started with
+  networking disabled and a 512 MiB/1 CPU limit: liveness 200, unauthenticated
+  admin access 401, missing-configuration readiness 503, and new review schema
+  loaded. This checks packaging/startup, not configured provider load or OCR memory.
+- No push, deployment, hosted reference import or cloud ledger change is part of
+  this candidate. Live provider/Sheet and idle-start checks remain post-approval
+  release gates. No numeric case-study score or uptime guarantee is claimed.
+
+The following are historical deployed v0.9 and earlier results, not hosted tests
+of this candidate.
+
+Previously deployed v0.9.0 regression checks on 6 November 2026 (India time):
 
 - 260 component tests plus 37 subtests passed; 54 isolated-native tests are
   skipped by this command and are run separately.
@@ -16,7 +80,7 @@ Current v0.9.0 regression checks on 6 November 2026 (India time):
   acceptance, queue limits remain atomic, expired work avoids provider calls,
   and full-history search/pagination stays ownership-scoped past 200 records.
 
-Current hosted v0.9.0 verification also passed:
+Previously deployed v0.9.0 verification also passed:
 
 - Deployed version and every JS/CSS/logo asset byte-match the local build.
 - Actual admin/user logins, restricted DB permission gate, running workers,

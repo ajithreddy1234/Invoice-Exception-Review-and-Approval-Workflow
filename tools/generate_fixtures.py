@@ -416,7 +416,7 @@ def verify(output: Path, manifest: dict) -> None:
     (output/'VERIFICATION.md').write_text('# Fixture verification\n\n27 PDFs and 3 images generated and structurally checked. All 30 fixture IDs and paths are unique, and scenario sequences reference existing IDs. This is not an end-to-end extraction/decision result.\n\n'+'\n'.join(report)+'\n\nExact renamed duplicate has identical bytes; re-export and screenshot have different hashes. Scan PDFs contain images only, with no hidden text. Alias-only and unknown-name PDFs print neither a vendor code nor tax identifier, and use the printed vendor name in their author metadata. Scenario outcomes require the stated initial conditions; reset between independent branches.\n')
 
 
-def generate_demo_pack(output: Path, pack: str) -> dict:
+def generate_demo_pack(output: Path, pack: str, *, admin_review: bool = False) -> dict:
     """Independent, immutable demo budget; expected outcomes never enter PDFs."""
     if not re.fullmatch(r'[A-Z][A-Z0-9]{0,11}', pack):
         raise ValueError('Pack must be 1-12 uppercase letters/digits, starting with a letter')
@@ -432,6 +432,8 @@ def generate_demo_pack(output: Path, pack: str) -> dict:
         'AMBIG-A': f'Website design - demo {pack}',
         'AMBIG-B': f'Website design - demo {pack}',
     }
+    if admin_review:
+        descriptions['REVIEW'] = f'Office operations support - demo {pack}'
     pos, lines = [], []
     for suffix, description in descriptions.items():
         po = prefix + suffix
@@ -469,7 +471,13 @@ def generate_demo_pack(output: Path, pack: str) -> dict:
     scan.paste(blurred,box)
     add('07_blurred_total.pdf',scan_invoice,'Needs review; printed payable is unreadable',
         'Independent scan PO. Other visible amounts must not substitute for a printed payable.','Unreadable payable',image_pdf(scan))
-    manifest={'pack':pack,'synthetic':True,'generator_version':'demo-pack-v1','fixtures':fixtures,
+    if admin_review:
+        add('08_admin_line_review.pdf',replace(base,number=f'INV-DEMO-{pack}-REVIEW-01',po=prefix+'REVIEW',
+            description=f'Office ops support - demo {pack}',quantity='5',net='5000.00',total='5000.00'),
+            'Needs review; eligible after reasoned PO-line mapping, then explicit admin acceptance',
+            'Independent review PO. Preserve printed wording; map line 1 to SERVICE. No financial limit is waived.',
+            'Admin resolves description difference')
+    manifest={'pack':pack,'synthetic':True,'generator_version':'demo-pack-v2' if admin_review else 'demo-pack-v1','fixtures':fixtures,
               'reference_rows':{'PurchaseOrders':pos,'POLines':lines}}
     guide='# Demo pack '+pack+'\n\nSynthetic documents. No payments are executed. Follow the order below.\n\n'
     guide+='Each acceptance consumes its PO budget. Reusing an accepted file must be blocked; prepare another pack for a fresh rehearsal. The original ledger is never reset.\n\n'
@@ -482,7 +490,7 @@ def generate_demo_pack(output: Path, pack: str) -> dict:
         text=reader.pages[0].extract_text().strip()
         assert not text if item['file']=='07_blurred_total.pdf' else item['invoice_number'] in text
     assert fixtures[0]['sha256']==fixtures[1]['sha256']
-    assert len({f['invoice_number'] for f in fixtures})==6
+    assert len({f['invoice_number'] for f in fixtures})==6+int(admin_review)
     with ZipFile(output/f'invoice-demo-{pack}.zip','w',ZIP_DEFLATED) as archive:
         for filename in [f['file'] for f in fixtures]+['SCENARIOS.md','manifest.json']:
             archive.write(output/filename,filename)
@@ -493,8 +501,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output-dir', type=Path)
     parser.add_argument('--pack', help='Create a fresh demo pack, e.g. B, C or D; never reset an existing pack')
+    parser.add_argument('--admin-review',action='store_true',help='Include an independent PO and PDF for controlled admin line mapping')
     args = parser.parse_args()
+    if args.admin_review and not args.pack:parser.error('--admin-review requires --pack')
     target=args.output_dir or (ROOT/'tests'/'fixtures'/'demo_packs'/args.pack if args.pack else ROOT/'tests'/'fixtures')
-    result = generate_demo_pack(target.resolve(),args.pack) if args.pack else generate(target.resolve())
+    result = generate_demo_pack(target.resolve(),args.pack,admin_review=args.admin_review) if args.pack else generate(target.resolve())
     print(json.dumps({'generated':len(result['fixtures']), 'pack':args.pack,
                       'output_dir':str(target.resolve())}, indent=2))

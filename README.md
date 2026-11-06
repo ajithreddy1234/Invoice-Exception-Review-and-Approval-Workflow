@@ -21,6 +21,11 @@ progress, original-source evidence, each check and the resulting decision.
 Accepted amounts and remaining PO balances are visible on the dashboard;
 spreadsheet publication has its own status and safe retry.
 
+Review guidance identifies missing, closed or mismatched POs and explains the
+next authorized action. Checks that depend on an unresolved PO show **Waiting for
+PO**, never a pass. The record displays the extracted invoice number as well as
+the filename. Saving an admin correction and accepting it remain separate actions.
+
 Synthetic fixtures and the evaluator walkthrough live in the source repository
 under `tests/fixtures/` and `docs/DEMO.md`. They are development resources, excluded
 from the server image. The application has no sample catalog or download API.
@@ -74,7 +79,10 @@ Supabase provides Auth, Postgres and private original storage. FastAPI serves th
 React build and durable processing/publication workers in one Docker service.
 The model receives page text only and proposes fields; it cannot approve invoices.
 Admin corrections preserve prior revisions, require a reason/evidence, rerun the
-checks and require a separate explicit acceptance. Failed checks cannot be bypassed.
+checks and require a separate explicit acceptance. Admins may map a differently worded source line to an authorized PO line or confirm
+a grounded OCR confidence warning, with a reason and explicit acceptance. Source
+contradictions, duplicates and financial limits remain blocking. See
+[admin review permissions](docs/ADMIN-REVIEW.md).
 
 ## Run locally
 
@@ -121,10 +129,14 @@ The first preparation command is a read-only plan. Applying appends matching PO
 and line rows, preserves existing references, verifies read-back and activates the
 normal validated import. Conflicting existing codes are rejected. Pack files are
 written to `tests/fixtures/demo_packs/` for offline testing and walkthroughs; they
-are not shipped by the web service. Packs B and C are included in the source.
+are not shipped by the web service. Packs B, C and D are included in the source; D includes a separate admin-review
+example. Add `--admin-review` when generating another pack to include that case.
 Never delete acceptances or rewrite report rows to rehearse.
 
 ## Verify
+
+See the [release checklist](docs/RELEASE-CHECKLIST.md) for local versus hosted
+verification boundaries and the complete review-before-deployment gate.
 
 ```sh
 .venv/bin/python -m pytest -q
@@ -170,12 +182,18 @@ uv export --frozen --no-dev --no-emit-project --format requirements-txt --output
   accepting a PO/customer reference as invoice identity.
 - Originals are hash-verified before both processing and download. Expired queued
   sources stop before storage/OCR/model work.
+- Image decoding is restricted to JPEG/PNG, with bounded dimensions and processing.
+  The runtime uses patched Pillow 13.0.0; package audits are dated evidence, not a
+  guarantee against future vulnerabilities.
 - English OCR; PDF/JPEG/PNG; 5 MiB; at most three pages. No currency conversion,
   payment, email intake/delivery, output-invoice generation or ERP integration.
 - Unreadable totals remain unknown; subtotal, tax or PO balance cannot substitute
   for printed payable evidence. A clearer-source request is an in-app record.
 - Originals expire after seven days. Extracted evidence, hashes and ledger/audit
   records remain. Expired sources cannot be approved through review.
+- The upload page discloses private source retention and external text extraction.
+  Use only data approved for the configured provider; a disclosure does not make
+  unpaid Gemini an approved channel for confidential company invoices.
 - References must be current. Invalid imports preserve the last valid version;
   stale imports pause eligibility. An admin can sync references from the dashboard.
 - Durable jobs survive restarts. Expired leases can take five minutes to recover.
@@ -208,7 +226,11 @@ no ledger writes; it is not a substitute for a fresh extraction test.
 The HTTP listener, UI and liveness endpoint start without waiting for database or
 Sheets network calls. Startup verifies restricted DB permissions before starting
 workers; an unavailable DB is retried in the background. Readiness returns 503
-with `Retry-After` until initialization finishes. If the Sheet import fails, the
+until initialization finishes, required processing configuration exists, references
+are fresh and workers are enabled/running. Startup and worker/reference holds
+include `Retry-After`; intentionally paused workers are not processing-ready.
+Liveness remains available for the UI and is the host health-check endpoint.
+If the Sheet import fails, the
 last valid snapshot is preserved; normal freshness checks still govern decisions.
 Admin diagnostics distinguish configured keys, actual worker state and startup
 status. `/health/live` exposes version/uptime without dependency calls.

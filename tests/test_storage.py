@@ -132,3 +132,31 @@ def test_errors_do_not_echo_secrets_or_keys(method,status):
 @pytest.mark.parametrize('status', [200,204,404])
 def test_delete_idempotent_success(status):
     assert gateway(lambda request:httpx.Response(status)).delete(KEY) is None
+
+
+@pytest.mark.parametrize('code',[404,'404'])
+def test_missing_object_wrapped_in_http_400_is_classified_without_leaking_body(code):
+    client=gateway(lambda request:httpx.Response(400,json={'statusCode':code,'error':'not_found','message':'private upstream key'}))
+    with pytest.raises(StorageNotFound) as error:client.download(KEY)
+    assert str(error.value)=='STORAGE_OBJECT_NOT_FOUND'
+
+
+@pytest.mark.parametrize('body',[
+    b'{"statusCode":403,"message":"private"}',b'{"statusCode":400}',b'private html',
+    b'[404]',b'{"error":"not_found"}', b'{"statusCode":404,"padding":"'+b'x'*5000+b'"}',
+])
+def test_other_or_oversized_400_bodies_are_not_misreported_as_missing(body):
+    with pytest.raises(StorageError) as error:
+        gateway(lambda request:httpx.Response(400,content=body)).download(KEY)
+    assert not isinstance(error.value,StorageNotFound)
+    assert str(error.value)=='STORAGE_DOWNLOAD_UNAVAILABLE'
+
+
+@pytest.mark.parametrize('code',[404,'404'])
+def test_delete_accepts_legacy_not_found_as_idempotent_success(code):
+    assert gateway(lambda request:httpx.Response(400,json={'statusCode':code})).delete(KEY) is None
+
+
+def test_delete_does_not_ignore_a_different_legacy_error():
+    with pytest.raises(StorageError,match='STORAGE_DELETE_UNAVAILABLE'):
+        gateway(lambda request:httpx.Response(400,json={'statusCode':403})).delete(KEY)

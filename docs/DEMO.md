@@ -5,13 +5,13 @@ App: https://asa-invoice-review.onrender.com
 Use the dedicated admin/user credentials supplied privately. Do not put passwords
 in the repository, sample ZIPs or recording. The deployed application contains
 only the normal invoice workflow. Use this repository document for the walkthrough.
-Download the source archive and open `tests/fixtures/demo_packs/C/invoice-demo-C.zip`
-for the reserved sample pack; there is no in-app sample-download endpoint.
+Download the source archive and select a verified unused pack under
+`tests/fixtures/demo_packs/`; there is no in-app sample-download endpoint.
 
 ## Prepare
 
-Use pack B for rehearsal and reserve an unused pack for the evaluator. Pack C is
-provided separately for that purpose. Packs are shared across the workspace;
+Reserve an unused, imported pack for the evaluator and use a different authorized
+PO for release verification. No static pack name guarantees unused data. Packs are shared across the workspace;
 check the actual invoice history and PO balances before starting. Re-uploading an accepted file
 must be blocked. The system never deletes the ledger to make a demo appear fresh.
 
@@ -89,3 +89,25 @@ ledger/audit history remain. There is no payment, email delivery, generated outp
 invoice, currency conversion or ERP integration. Host sleep and model quotas are
 deployment dependencies. The native tests reproduce concurrency/rollback evidence
 in an isolated local Postgres database without resetting cloud data.
+
+## Controlled admin example (local v0.10 candidate)
+
+Pack D includes `08_admin_line_review.pdf` and an independent REVIEW PO. Its
+printed description is abbreviated; all units, quantities and prices remain
+supported. In the candidate, open admin review, map line 1 to SERVICE, give the
+business/evidence reason and save. Show that acceptance is still empty, then use
+the separate explicit acceptance action and inspect the recorded mapping. No
+printed field is rewritten to match the PO.
+
+Pack D has not been imported into the hosted workspace by this local change.
+Use it on the hosted application only after the candidate release and matching
+reference import are explicitly approved. New packs can include this example:
+
+```sh
+.venv/bin/python tools/generate_fixtures.py --pack E --admin-review
+```
+
+The normal source-only preparation tool can plan E's additive rows. Do not apply
+changes or reset accepted records just to make a rehearsal appear fresh. For a
+five-minute recording, prioritize a fresh clean acceptance, a duplicate and one
+reasoned admin resolution; use other edge cases during the live walkthrough.

@@ -173,7 +173,7 @@ def test_offline_packs_import_without_reset_and_track_commitments_independently(
             raw[name]+=[[row[key] for key in raw[name][0]] for row in records]
     with system['db'].transaction() as conn:
         import_reference(conn,parse_reference(raw),'native-demo-packs',str(ADMIN))
-    assert scalar(system,"SELECT count(*) FROM app.reference_pos WHERE reference_version_id=(SELECT active_reference_version_id FROM app.runtime_state WHERE singleton) AND po_code LIKE 'PO-DEMO-%%'")==10
+    assert scalar(system,"SELECT count(*) FROM app.reference_pos WHERE reference_version_id=(SELECT active_reference_version_id FROM app.runtime_state WHERE singleton) AND po_code LIKE 'PO-DEMO-%%'")==sum(len(p['reference_rows']['PurchaseOrders']) for p in packs)
     b=next(p for p in packs if p['pack']=='B');entry=b['fixtures'][0]
     system['extractor'].candidate=candidate(number=entry['invoice_number'],po=entry['po_code'],description=b['reference_rows']['POLines'][0]['description'])
     sid,_=upload(system,data=(ASSETS/'B'/entry['file']).read_bytes())
@@ -668,6 +668,7 @@ def test_admin_correction_revalidates_without_model_or_automatic_acceptance(syst
     assert response.json()['verdict']=='eligible' and response.json()['acceptance_mode']=='admin_required'
     result=state(system,sid);assert result['submission']['status']=='needs_review' and result['acceptance'] is None
     assert result['revision']['kind']=='admin_correction' and result['revision']['created_by']==str(ADMIN)
+    assert 'Explicit administrator acceptance' in result['validation']['summary']
     assert result['revision']['id']!=before['revision']['id']
     assert len(result['revisions'])==2 and all(c['status']=='pass' for c in result['validation']['checks'])
     assert len(system['extractor'].documents)==calls
@@ -970,3 +971,178 @@ def test_register_filters_input_validation_and_disabled_access(system):
     try:assert system['client'].get('/api/invoices').status_code==403
     finally:
         system['owner'].execute('UPDATE app.profiles SET enabled=true WHERE user_id=%s',(USER,));system['owner'].commit()
+
+
+def mapped_case(system,number='INV-ADMIN-01',quantity='6',description='Consulting support hours'):
+    from tools.generate_fixtures import Invoice,make_pdf,read_rows
+    value=candidate(number,'PO-PARTIAL',description,quantity,str(Decimal(quantity)*1000))
+    system['extractor'].candidate=value
+    doc=Invoice(number=number,po='PO-PARTIAL',description=description,quantity=quantity,
+                net=str(Decimal(quantity)*1000),total=str(Decimal(quantity)*1000))
+    data=make_pdf(doc,{v['vendor_code']:v for v in read_rows('Vendors.csv')})
+    sid,_=upload(system,data=data,display_name=number+'.pdf');system['pipeline'].process_once()
+    assert state(system,sid)['submission']['status']=='needs_review'
+    return sid,value
+
+
+def mapping_payload(system,sid,value):
+    options=system['client'].get(f'/api/admin/submissions/{sid}/review-options')
+    assert options.status_code==200,options.text
+    body=correction_payload(system,sid,value)
+    body.update(review_reference_id=options.json()['reference_version_id'],line_mappings=[{'invoice_line':0,'po_line_code':'SERVICE'}])
+    return body,options.json()
+
+
+def test_admin_line_mapping_preserves_source_and_needs_explicit_acceptance(system):
+    sid,value=mapped_case(system);before=state(system,sid);calls=len(system['extractor'].documents)
+    assert system['client'].get(f'/api/admin/submissions/{sid}/review-options').status_code==403
+    system['client'].cookies.set(COOKIE,'admin');body,options=mapping_payload(system,sid,value)
+    assert options['pos'][0]['po_code']=='PO-PARTIAL'
+    response=system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body)
+    assert response.status_code==200,response.text
+    result=state(system,sid);assert result['validation']['verdict']=='eligible' and result['acceptance'] is None
+    assert result['validation']['acceptance_mode']=='admin_required'
+    assert result['revision']['evidence']['candidate']==value.model_dump(mode='json')
+    ctx=result['revision']['evidence']['review_context']
+    assert ctx['actor_id']==str(ADMIN) and ctx['base_revision_id']==before['revision']['id']
+    assert ctx['source_sha256']==result['submission']['file_sha256']
+    assert ctx['line_mappings'][0]['source_description']=='Consulting support hours'
+    assert ctx['line_mappings'][0]['po_description']=='Consulting services'
+    assert result['reviews'][0]['details']['review_context']==ctx
+    assert len(system['extractor'].documents)==calls
+    with pytest.raises(psycopg.errors.RaiseException,match='ADMIN_REQUIRED'):
+        with system['db'].transaction() as c:c.execute('SELECT app.accept_invoice(%s,%s)',(result['validation']['id'],USER))
+    response=system['client'].post(f'/api/admin/submissions/{sid}/accept',headers={'Origin':ORIGIN},json={'reason':'Reviewed printed services and authorized line allocation'})
+    assert response.status_code==200,response.text
+    assert state(system,sid)['acceptance']['method']=='admin'
+    assert scalar(system,'SELECT sum(amount_minor) FROM app.acceptances')==600000
+    assert system['pipeline'].publish_once()
+    assert state(system,sid)['publication']['status']=='published'
+
+
+def test_manual_resolution_permissions_do_not_carry_into_reprocessing(system):
+    sid,value=mapped_case(system);system['client'].cookies.set(COOKIE,'admin')
+    body,_=mapping_payload(system,sid,value)
+    assert system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body).status_code==200
+    assert state(system,sid)['validation']['verdict']=='eligible'
+    assert system['client'].post(f'/api/submissions/{sid}/retry',headers={'Origin':ORIGIN}).status_code==202
+    system['pipeline'].process_once();result=state(system,sid)
+    assert result['validation']['verdict']=='needs_review' and result['acceptance'] is None
+    assert not result['revision']['evidence']['review_context']['line_mappings']
+
+
+@pytest.mark.parametrize('bad_mapping',[
+    [{'invoice_line':0,'po_line_code':'MISSING'}],
+    [{'invoice_line':50,'po_line_code':'SERVICE'}],
+    [{'invoice_line':0,'po_line_code':'SERVICE'},{'invoice_line':0,'po_line_code':'SERVICE'}],
+    [{'invoice_line':True,'po_line_code':'SERVICE'}],
+])
+def test_admin_invalid_line_mapping_is_rejected_without_new_revision(system,bad_mapping):
+    sid,value=mapped_case(system);before=state(system,sid)
+    system['client'].cookies.set(COOKIE,'admin');body,_=mapping_payload(system,sid,value);body['line_mappings']=bad_mapping
+    response=system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body)
+    assert response.status_code==422,response.text
+    assert state(system,sid)['revision']['id']==before['revision']['id']
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==0
+
+
+def test_manual_line_options_are_reference_pinned_and_role_scoped(system):
+    sid,value=mapped_case(system);system['client'].cookies.set(COOKIE,'admin');body,_=mapping_payload(system,sid,value)
+    no_pin=dict(body);no_pin.pop('review_reference_id')
+    assert system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=no_pin).status_code==422
+    with system['db'].transaction() as c:import_reference(c,sample(),'changed-review-reference',str(ADMIN))
+    assert system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body).status_code==409
+    system['client'].cookies.set(COOKIE,'user')
+    assert system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body).status_code==403
+    assert system['client'].post(f'/api/admin/submissions/{sid}/accept',headers={'Origin':ORIGIN},json={'reason':'Try forbidden acceptance'}).status_code==403
+
+
+def test_two_manually_resolved_invoices_still_compete_for_the_same_remaining_balance(system):
+    first,v1=mapped_case(system);second,v2=mapped_case(system,'INV-ADMIN-02')
+    system['client'].cookies.set(COOKIE,'admin')
+    for sid,value in ((first,v1),(second,v2)):
+        body,_=mapping_payload(system,sid,value)
+        response=system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body)
+        assert response.status_code==200,response.text
+        assert state(system,sid)['validation']['verdict']=='eligible'
+    accepted=system['client'].post(f'/api/admin/submissions/{first}/accept',headers={'Origin':ORIGIN},json={'reason':'Authorize first reviewed invoice'})
+    held=system['client'].post(f'/api/admin/submissions/{second}/accept',headers={'Origin':ORIGIN},json={'reason':'Try second reviewed invoice'})
+    assert accepted.status_code==200 and held.status_code==409
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==1
+    assert scalar(system,'SELECT sum(amount_minor) FROM app.acceptances')==600000
+    assert state(system,second)['acceptance'] is None
+
+
+def test_admin_may_confirm_ocr_confidence_only_when_text_already_supports_the_value(system):
+    # Actual PDF bytes/text; OCR confidence is simulated to target adjudication.
+    # Existing extraction tests separately exercise real Tesseract scans.
+    doc=read_document((FIXTURES/'happy_full.pdf').read_bytes(),'application/pdf')
+    doc.pages[0].method='ocr';doc.pages[0].low_confidence_tokens=['INV-1001']
+    system['pipeline'].reader=lambda *_:doc.model_copy(deep=True)
+    sid,_=upload(system);system['pipeline'].process_once();assert state(system,sid)['submission']['status']=='needs_review'
+    system['client'].cookies.set(COOKIE,'admin')
+    options=system['client'].get(f'/api/admin/submissions/{sid}/review-options').json()
+    assert options['ocr_fields']==['invoice_number']
+    body=correction_payload(system,sid);body['verified_ocr_fields']=['invoice_number']
+    response=system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body)
+    assert response.status_code==200,response.text
+    result=state(system,sid);assert result['validation']['verdict']=='eligible' and result['acceptance'] is None
+    assert result['revision']['evidence']['raw_issues'][0]['code']=='LOW_OCR_CONFIDENCE'
+    assert result['revision']['evidence']['issues']==[]
+    assert result['revision']['evidence']['review_context']['verified_ocr_fields']==['invoice_number']
+    assert system['client'].post(f'/api/admin/submissions/{sid}/accept',headers={'Origin':ORIGIN},json={'reason':'Read the original identifier and authorize acceptance'}).status_code==200
+
+
+def test_ocr_confirmation_cannot_override_an_unreadable_total(system):
+    value=candidate('INV-SCAN-01');value.total_gross=field(None);system['extractor'].candidate=value
+    sid,_=upload(system,'scan_blurred_total.pdf');system['pipeline'].process_once();before=state(system,sid)
+    system['client'].cookies.set(COOKIE,'admin')
+    body=correction_payload(system,sid,candidate('INV-SCAN-01'));body['verified_ocr_fields']=['total_gross']
+    response=system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=body)
+    assert response.status_code==422,response.text
+    assert state(system,sid)['revision']['id']==before['revision']['id']
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==0
+
+
+def test_fresh_pack_runs_complete_case_study_and_admin_resolution_locally(system,tmp_path):
+    from tools.generate_fixtures import generate_demo_pack
+    pack=generate_demo_pack(tmp_path/'REHEARSAL','REHEARSAL',admin_review=True)
+    tabs={p.stem:list(csv.reader(p.open())) for p in (Path(__file__).parent/'reference_data').glob('*.csv')}
+    for name,records in pack['reference_rows'].items():
+        tabs[name].extend([[record[column] for column in tabs[name][0]] for record in records])
+    with system['db'].transaction() as c:import_reference(c,parse_reference(tabs),'local-rehearsal-only',str(ADMIN))
+    fixtures=pack['fixtures'];prefix='PO-DEMO-REHEARSAL-'
+    def run(index,quantity='10',total='10000.00',description=None,po=None):
+        f=fixtures[index]
+        desc=description or next(x['description'] for x in pack['reference_rows']['POLines'] if x['po_code']==f['po_code'])
+        value=candidate(f['invoice_number'],f['po_code'] if po is None else po,desc,quantity,total)
+        system['extractor'].candidate=value
+        sid,_=upload(system,data=(tmp_path/'REHEARSAL'/f['file']).read_bytes(),display_name=f['file'])
+        system['pipeline'].process_once();return sid,value
+    happy,_=run(0);assert state(system,happy)['submission']['status']=='accepted'
+    duplicate,_=run(1);assert state(system,duplicate)['submission']['status']=='blocked_duplicate'
+    partial,_=run(2,'6','6000.00');assert state(system,partial)['submission']['status']=='accepted'
+    over,_=run(3,'4.5','4500.00');assert state(system,over)['submission']['status']=='needs_review'
+    amb=fixtures[5];value=candidate(amb['invoice_number'],None,'Website design - demo REHEARSAL','5','5000.00')
+    system['extractor'].candidate=value;sid,_=upload(system,data=(tmp_path/'REHEARSAL'/amb['file']).read_bytes());system['pipeline'].process_once()
+    assert state(system,sid)['validation']['po_code'] is None
+    system['client'].cookies.set(COOKIE,'admin')
+    assert system['client'].post(f'/api/admin/submissions/{sid}/correct',headers={'Origin':ORIGIN},json=correction_payload(system,sid,value,prefix+'AMBIG-A')).status_code==200
+    assert system['client'].post(f'/api/admin/submissions/{sid}/accept',headers={'Origin':ORIGIN},json={'reason':'Verified exact ambiguous PO and supplier context'}).status_code==200
+    blurred=fixtures[6];unreadable=candidate(blurred['invoice_number'],blurred['po_code'],'Document support - demo REHEARSAL')
+    unreadable.total_gross=field(None);system['extractor'].candidate=unreadable
+    unclear,_=upload(system,data=(tmp_path/'REHEARSAL'/blurred['file']).read_bytes());system['pipeline'].process_once()
+    unclear_result=state(system,unclear)
+    assert unclear_result['submission']['status']=='needs_review' and unclear_result['revision']['total_gross_minor'] is None
+    assert 'total_gross' in unclear_result['revision']['unresolved_critical_fields']
+    reviewed,value=run(7,'5','5000.00','Office ops support - demo REHEARSAL')
+    assert state(system,reviewed)['submission']['status']=='needs_review'
+    body,_=mapping_payload(system,reviewed,value)
+    assert system['client'].post(f'/api/admin/submissions/{reviewed}/correct',headers={'Origin':ORIGIN},json=body).status_code==200
+    assert system['client'].post(f'/api/admin/submissions/{reviewed}/accept',headers={'Origin':ORIGIN},json={'reason':'Verified abbreviated printed service and mapped authorized line'}).status_code==200
+    # Publish the exact four ledger decisions; held/duplicate runs create no task.
+    while system['pipeline'].publish_once():pass
+    assert scalar(system,'SELECT count(*) FROM app.acceptances')==4
+    assert scalar(system,"SELECT count(*) FROM app.export_tasks WHERE status='published'")==4
+    assert scalar(system,"SELECT sum(amount_minor) FROM app.acceptances")==2600000
+    assert len(system['publisher'].rows)==4

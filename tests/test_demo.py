@@ -28,12 +28,12 @@ def test_packs_have_separate_budget_identities_and_only_intended_duplicates():
     packs=catalog();assert {'B','C'}<={p['pack'] for p in packs}
     identities=[];po_codes=[]
     for p in packs:
-        files=p['fixtures'];assert len(files)==7
+        files=p['fixtures'];extra=int(any(f['file']=='08_admin_line_review.pdf' for f in files));assert len(files)==7+extra
         assert files[0]['sha256']==files[1]['sha256']
-        assert len({f['invoice_number'] for f in files})==6
+        assert len({f['invoice_number'] for f in files})==6+extra
         identities.append({f['invoice_number'] for f in files})
         po_codes.append({x['po_code'] for x in p['reference_rows']['PurchaseOrders']})
-        assert len(po_codes[-1])==5
+        assert len(po_codes[-1])==5+extra
         for f in files:
             data=(ASSETS/p['pack']/f['file']).read_bytes();assert sha256(data).hexdigest()==f['sha256']
             pages=PdfReader(io.BytesIO(data)).pages;assert len(pages)==1
@@ -95,3 +95,17 @@ def test_sample_routes_are_absent_even_for_authenticated_users(role):
             response=client.get(path)
             assert response.status_code==404
             assert response.headers['cache-control']=='no-store'
+
+
+def test_admin_review_pack_has_an_independent_po_and_preserves_source_wording(tmp_path):
+    import sys
+    sys.path.insert(0,str(ROOT/'tools'))
+    from generate_fixtures import generate_demo_pack
+    pack=generate_demo_pack(tmp_path/'E','E',admin_review=True)
+    assert len(pack['fixtures'])==8 and len(pack['reference_rows']['PurchaseOrders'])==6
+    item=pack['fixtures'][-1];assert item['po_code']=='PO-DEMO-E-REVIEW'
+    printed=PdfReader(tmp_path/'E'/item['file']).pages[0].extract_text()
+    assert 'Office ops support - demo E' in printed and 'Office operations support - demo E' not in printed
+    line=next(x for x in pack['reference_rows']['POLines'] if x['po_code']==item['po_code'])
+    assert line['description']=='Office operations support - demo E'
+    assert sha256((tmp_path/'E'/item['file']).read_bytes()).hexdigest()==item['sha256']

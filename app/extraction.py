@@ -199,7 +199,7 @@ def read_document(data: bytes, mime_type: str) -> DocumentText:
 
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
-            with Image.open(io.BytesIO(data)) as source:
+            with Image.open(io.BytesIO(data), formats=["JPEG", "PNG"]) as source:
                 expected = "JPEG" if mime_type == "image/jpeg" else "PNG"
                 if source.format != expected:
                     raise ExtractionError("DOCUMENT_TYPE_MISMATCH")

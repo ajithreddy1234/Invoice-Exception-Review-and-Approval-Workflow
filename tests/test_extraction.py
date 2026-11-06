@@ -92,6 +92,30 @@ class DocumentTests(unittest.TestCase):
                 read_document(data.getvalue(), "image/png")
         self.assertEqual(error.exception.code, "OCR_TIMEOUT")
 
+    def test_unapproved_image_decoders_are_not_used_for_declared_upload_types(self):
+        from app.preview_worker import render
+        from PIL import UnidentifiedImageError
+        for format_name in ("GIF", "TIFF", "BMP"):
+            data = io.BytesIO()
+            Image.new("RGB", (20, 20), "white").save(data, format=format_name)
+            for mime in ("image/png", "image/jpeg"):
+                with self.subTest(format=format_name, mime=mime):
+                    with patch("app.extraction._ocr", side_effect=AssertionError("must reject before OCR")):
+                        with self.assertRaises(ExtractionError) as error:
+                            read_document(data.getvalue(), mime)
+                    self.assertEqual(error.exception.code, "DOCUMENT_UNREADABLE")
+                    with self.assertRaises(UnidentifiedImageError):
+                        render(data.getvalue(), mime, 1)
+
+    def test_preview_rejects_a_valid_image_with_the_wrong_declared_type(self):
+        from app.preview_worker import render
+        from PIL import UnidentifiedImageError
+        for format_name, mime in (("PNG", "image/jpeg"), ("JPEG", "image/png")):
+            data = io.BytesIO()
+            Image.new("RGB", (20, 20), "white").save(data, format=format_name)
+            with self.subTest(format=format_name), self.assertRaises(UnidentifiedImageError):
+                render(data.getvalue(), mime, 1)
+
 
 class EvidenceTests(unittest.TestCase):
     def doc(self, extra=""):

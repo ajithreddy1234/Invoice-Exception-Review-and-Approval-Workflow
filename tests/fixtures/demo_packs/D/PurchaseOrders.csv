@@ -1,0 +1,7 @@
+po_code,vendor_code,currency,authorized_gross,status,billing_mode
+PO-DEMO-D-FULL,V-ACME,INR,10000.00,open,full
+PO-DEMO-D-PARTIAL,V-ACME,INR,10000.00,open,partial
+PO-DEMO-D-SCAN,V-ACME,INR,10000.00,open,full
+PO-DEMO-D-AMBIG-A,V-ACME,INR,10000.00,open,partial
+PO-DEMO-D-AMBIG-B,V-ACME,INR,10000.00,open,partial
+PO-DEMO-D-REVIEW,V-ACME,INR,10000.00,open,partial

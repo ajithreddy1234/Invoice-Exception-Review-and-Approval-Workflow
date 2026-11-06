@@ -109,7 +109,7 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
             if auth is None:
                 await run_in_threadpool(app.state.auth.close)
 
-    app = FastAPI(title='Invoice Review API', version='0.9.0', lifespan=lifespan,
+    app = FastAPI(title='Invoice Review API', version='0.11.0', lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.db = db or Database(settings.database_url.get_secret_value())
@@ -184,9 +184,11 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
     @app.get('/health/ready')
     def ready(response: Response):
         configured = settings.configured()
-        if not configured['database'] or not configured['authentication'] or not configured['sheets']:
+        if not all(configured.values()) or app.state.storage is None or app.state.pipeline is None:
             response.status_code = 503
-            return {'status': 'setup_required', 'configured': configured}
+            return {'status': 'setup_required', 'configured': configured,
+                    'storage_configured': app.state.storage is not None,
+                    'invoice_pipeline_complete': app.state.pipeline is not None}
         if not app.state.startup_complete:
             response.status_code = 503
             response.headers['Retry-After'] = '2'
@@ -194,12 +196,18 @@ def create_app(settings: Settings | None = None, *, db=None, auth=None, sheets=N
         try:
             app.state.db.permission_gate()
             state = reference_status(app.state.db)
-            ok = bool(state.get('fresh'))
+            fresh = bool(state.get('fresh'))
+            workers_running = bool(app.state.workers and app.state.workers.running)
+            ok = fresh and workers_running and settings.worker_enabled
             response.status_code = 200 if ok else 503
-            return {'status': 'ready_for_backend_use' if ok else 'reference_required',
-                    'reference_fresh': ok, 'gemini_configured': configured['gemini'],
-                    'invoice_pipeline_complete': app.state.pipeline is not None,
-                    'workers_running': bool(app.state.workers and app.state.workers.running)}
+            if not ok:
+                response.headers['Retry-After'] = '5'
+            status = ('reference_required' if not fresh else 'processing_paused' if not settings.worker_enabled
+                      else 'workers_unavailable' if not workers_running else 'ready_for_backend_use')
+            return {'status': status, 'reference_fresh': fresh,
+                    'gemini_configured': configured['gemini'],
+                    'invoice_pipeline_complete': True,
+                    'workers_running': workers_running}
         except Exception:
             response.status_code = 503
             return {'status': 'dependency_unavailable'}

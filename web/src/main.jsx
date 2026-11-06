@@ -12,12 +12,14 @@ import {
   parseRoute,
   decisionSummary,
 } from "./model.js";
-import { SourceViewer, ReviewEditor } from "./ReviewWorkbench.jsx";
+import { SourceViewer, ReviewEditor, ReviewResolution } from "./ReviewWorkbench.jsx";
 import "./styles.css";
 import Dashboard, { CompanySelect, money } from "./Dashboard.jsx";
 import { apiRequest } from "./api.js";
 import BrandMark from "./BrandMark.jsx";
 import LogoutControl from "./LogoutControl.jsx";
+import Checks, { StatusBadge as Badge } from "./InvoiceChecks.jsx";
+import { reviewGuidance } from "./review-guidance.js";
 import { useInvoiceRegister } from "./useInvoiceRegister.js";
 
 const dateTime = (value) =>
@@ -38,36 +40,6 @@ const amount = (value, currency = "INR") =>
         minimumFractionDigits: 2,
       }).format(Number(value) / 100);
 
-function Badge({ value, children }) {
-  const tone = ["accepted", "published", "pass", "completed", "valid"].includes(
-    value,
-  )
-    ? "positive"
-    : [
-          "needs_review",
-          "review",
-          "pending",
-          "reference_hold",
-          "reconciliation_required",
-          "admin_required",
-        ].includes(value)
-      ? "warning"
-      : [
-            "rejected",
-            "processing_failed",
-            "failed",
-            "fail",
-            "blocked_duplicate",
-          ].includes(value)
-        ? "negative"
-        : "neutral";
-  return (
-    <span className={`badge ${tone}`}>
-      <span className="badge-dot" />
-      {children || human(value)}
-    </span>
-  );
-}
 
 function ErrorBox({ children }) {
   return children ? (
@@ -256,6 +228,7 @@ function Upload({ onUpload, request }) {
       <div className="upload-content">
         <h2>Verify an invoice</h2>
         <p>PDF, JPG or PNG · Up to 5 MiB and 3 pages · English documents</p>
+        <p className="small-muted">Originals are stored privately for up to seven days. Extracted page text is sent to Google Gemini for field extraction. Upload only documents your organization has authorized for that service.</p>
         <div className="file-controls">
           <label className="file-label">
             Choose invoice
@@ -370,48 +343,6 @@ function Evidence({ revision }) {
   );
 }
 
-function Checks({ validation, exactDuplicate = false }) {
-  const checks = Array.isArray(validation?.checks) ? validation.checks : [];
-  return (
-    <div className="check-list">
-      {CHECKS.map(([code, label]) => {
-        const found = checks.filter((item) => item.code === code);
-        const item = found[0];
-        const status = found.length > 1 ? "fail" : item?.status;
-        return (
-          <div className="check-row" key={code}>
-            <span
-              className={`check-icon ${status === "pass" ? "pass" : status ? "fail" : ""}`}
-              aria-hidden="true"
-            >
-              {status === "pass" ? "✓" : status ? "!" : "·"}
-            </span>
-            <div>
-              <strong>{label}</strong>
-              <p>
-                {found.length > 1
-                  ? "Conflicting check results. Revalidation required."
-                  : exactDuplicate
-                    ? "Not run after exact-file duplicate detection."
-                    : item?.reason ||
-                      item?.detail ||
-                      item?.message ||
-                      (status === "pass"
-                        ? "Verified"
-                        : item
-                          ? "See review summary"
-                          : "Awaiting validation")}
-              </p>
-            </div>
-            <Badge value={status || (exactDuplicate ? "not_run" : "pending")}>
-              {status ? human(status) : exactDuplicate ? "Not run" : "Pending"}
-            </Badge>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function ReviewActions({ data, user, request, onUpdate }) {
   const [reason, setReason] = useState("");
@@ -420,6 +351,7 @@ function ReviewActions({ data, user, request, onUpdate }) {
   const status = data?.submission?.status;
   const accepted = Boolean(data?.acceptance);
   const allowed = canAdminAccept(user, data);
+  const guidance = reviewGuidance(data, user.role);
   const rejectable =
     user.role === "admin" && !accepted && status === "needs_review";
   const retryable =
@@ -451,10 +383,9 @@ function ReviewActions({ data, user, request, onUpdate }) {
       <div className="section-heading">
         <h3>{user.role === "admin" ? "Review actions" : "Next step"}</h3>
       </div>
-      <p className="muted">
-        Unreadable or missing critical information needs a clearer replacement
-        invoice. Failed checks cannot be bypassed.
-      </p>
+      {guidance ? <div className="review-guidance" role="note"><strong>{guidance.title}</strong><p>{guidance.message}</p></div> : <p className="muted">
+        Compare the failed checks with the source and approved procurement records. Missing or unreadable critical information needs a clearer original. An administrator cannot waive duplicates or financial limits.
+      </p>}
       <ErrorBox>{error}</ErrorBox>
       {user.role === "admin" && (allowed || rejectable) && (
         <label>
@@ -550,6 +481,7 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
           <div>
             <span className="eyebrow muted">INVOICE RECORD</span>
             <h2>{filename}</h2>
+            {revision?.invoice_number && <p className="small-muted">Invoice number · {revision.invoice_number}</p>}
           </div>
           <button
             className="icon-button"
@@ -692,6 +624,7 @@ function Detail({ data, loading, error, user, request, onUpdate }) {
         request={request}
         onUpdate={onUpdate}
       />
+      <ReviewResolution data={data} />
       <section className="section-card">
         <div className="section-heading">
           <h3>Source evidence</h3>

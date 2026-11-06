@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
 
+from pydantic import SecretStr
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 import pytest
@@ -252,11 +253,24 @@ def test_missing_configuration_is_live_but_not_ready():
         assert not any(response.json()['configured'].values())
 
 
+def enable_processing_readiness(app, running=True):
+    """Simulate configured processing without providers, files or worker threads."""
+    app.state.settings.gemini_api_key = SecretStr('synthetic-test-key')
+    app.state.settings.gemini_model = 'synthetic-test-model'
+    app.state.storage = MagicMock()
+    app.state.pipeline = MagicMock()
+    if app.state.workers is None:
+        app.state.workers = MagicMock()
+    app.state.workers.running = running
+    app.state.workers.start.side_effect = lambda: setattr(app.state.workers, 'running', True)
+
+
 def test_ready_requires_fresh_reference_and_gate(boundary):
-    _, client, db, _, _ = boundary
+    app, client, db, _, _ = boundary
+    enable_processing_readiness(app)
     response = client.get('/health/ready')
     assert response.status_code == 200
-    assert response.json()['invoice_pipeline_complete'] is False
+    assert response.json()['invoice_pipeline_complete'] is True
     db.reference['fresh'] = False
     assert client.get('/health/ready').status_code == 503
     db.gate_error = DatabaseUnavailable('credential-bearing-private-url')
@@ -375,6 +389,7 @@ def test_slow_database_cannot_block_http_listener_or_start_workers_early():
         supabase_publishable_key='public',google_application_credentials='/not-real/key.json',
         google_spreadsheet_id='demo_spreadsheet_id'),db=db,auth=auth,sheets=MagicMock())
     workers=MagicMock();workers.running=False;app.state.workers=workers
+    enable_processing_readiness(app, running=False)
     started=time.monotonic()
     with TestClient(app) as client:
         try:
@@ -404,6 +419,7 @@ def test_slow_sheet_import_cannot_block_login_page_and_failed_import_preserves_r
         assert release.wait(4)
         raise RuntimeError('private-provider-details-must-not-be-returned')
     app=create_app(config,db=db,auth=FakeAuth(),sheets=MagicMock())
+    enable_processing_readiness(app, running=False)
     with patch('app.main.sync_reference',side_effect=slow_import),TestClient(app) as client:
         try:
             assert entered.wait(1)
@@ -450,7 +466,7 @@ def test_database_recovers_without_a_redeploy_and_workers_start_once_after_permi
         assert len(calls)==3 and app.state.startup=='database_verified'
         workers.start.assert_called_once()
         response=client.get('/health/live')
-        assert response.json()['version']=='0.9.0'
+        assert response.json()['version']=='0.11.0'
         assert 0<=response.json()['uptime_seconds']<3
         assert 'private' not in response.text
 
@@ -479,3 +495,27 @@ def test_database_error_does_not_expose_internal_sql_diagnostics(boundary):
     assert response.status_code==503
     assert response.json()=={'detail':'DATABASE_OPERATION_FAILED'}
     assert 'private' not in response.text and 'sqlstate' not in response.text
+
+
+@pytest.mark.parametrize('missing',['gemini_key','model','storage','pipeline'])
+def test_readiness_never_reports_ready_without_processing_dependencies(boundary,missing):
+    app,client,*_=boundary;enable_processing_readiness(app)
+    if missing=='gemini_key':app.state.settings.gemini_api_key=SecretStr('')
+    if missing=='model':app.state.settings.gemini_model=''
+    if missing=='storage':app.state.storage=None
+    if missing=='pipeline':app.state.pipeline=None
+    response=client.get('/health/ready')
+    assert response.status_code==503 and response.json()['status']=='setup_required'
+    assert client.get('/health/live').status_code==200
+
+
+def test_readiness_distinguishes_stopped_workers_and_intentional_pause(boundary):
+    app,client,*_=boundary;enable_processing_readiness(app,running=False)
+    response=client.get('/health/ready')
+    assert response.status_code==503 and response.json()['status']=='workers_unavailable'
+    assert response.headers['retry-after']=='5'
+    app.state.workers.running=True;app.state.settings.worker_enabled=False
+    response=client.get('/health/ready')
+    assert response.status_code==503 and response.json()['status']=='processing_paused'
+    app.state.settings.worker_enabled=True
+    assert client.get('/health/ready').status_code==200

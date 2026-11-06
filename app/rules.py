@@ -11,9 +11,10 @@ from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP, localcontext
 import re
 
-from app.extraction import DocumentText, InvoiceCandidate, validate_evidence
+from app.extraction import DocumentText, InvoiceCandidate
+from app.adjudication import review_evidence
 
-ENGINE_VERSION = "rules-1.0"
+ENGINE_VERSION = "rules-1.2"
 CHECK_CODES = ("required_fields", "vendor_match", "po_match", "source_evidence",
                "duplicate_check", "currency", "arithmetic", "line_allocation", "po_balance")
 BIGINT_MAX = 9223372036854775807
@@ -153,7 +154,8 @@ def _inclusive_rates(document: DocumentText) -> set[int]:
 
 
 def evaluate(candidate: InvoiceCandidate, document: DocumentText,
-             reference: dict, ledger: dict, *, selected_po: str | None = None) -> Decision:
+             reference: dict, ledger: dict, *, selected_po: str | None = None,
+             line_mappings: dict[int, str] | None = None, verified_ocr_fields=()) -> Decision:
     """Evaluate an extraction, preserving source and derived-field distinctions.
 
     ``reference`` rows use schema.sql column names. ``ledger`` contains accepted
@@ -163,10 +165,11 @@ def evaluate(candidate: InvoiceCandidate, document: DocumentText,
     """
     with localcontext() as context:
         context.prec = 80
-        return _evaluate(candidate, document, reference, ledger, selected_po)
+        return _evaluate(candidate, document, reference, ledger, selected_po, line_mappings or {}, verified_ocr_fields)
 
 
-def _evaluate(candidate, document, reference, ledger, selected_po=None):
+def _evaluate(candidate, document, reference, ledger, selected_po=None, line_mappings=None, verified_ocr_fields=()):
+    line_mappings = line_mappings or {}
     check_map = {}
 
     def check(code, passed, detail):
@@ -201,7 +204,7 @@ def _evaluate(candidate, document, reference, ledger, selected_po=None):
           else ("Unresolved fields: " + ", ".join(missing) + ". " if missing else "")
           + ("Reference snapshot is stale or missing; refresh before any acceptance." if not fresh else ""))
 
-    evidence_issues = validate_evidence(candidate, document)
+    raw_evidence_issues, evidence_issues = review_evidence(candidate, document, verified_ocr_fields)
     check("source_evidence", not evidence_issues,
           "Every extracted field is supported by page text; payable evidence is readable."
           if not evidence_issues else "; ".join(f"{item.field}: {item.code}" for item in evidence_issues))
@@ -240,10 +243,27 @@ def _evaluate(candidate, document, reference, ledger, selected_po=None):
     selected = [row for row in found if row['po_code']==selected_po] if not explicit and selected_po else []
     po = selected[0] if len(found)>1 and len(selected)==1 else found[0] if len(found)==1 and (not selected_po or selected_po==found[0]['po_code']) else None
     po_valid = bool(po and approved_vendor and po["vendor_code"] == vendor["vendor_code"] and po["status"] == "open")
-    check("po_match", po_valid,
-          f"Unique open PO {po['po_code']} belongs to the matched vendor." if po_valid else
-          ("Several exact PO candidates require a reasoned admin selection." if len(found) > 1
-           else "No unique, open PO belonging to the approved vendor was matched."))
+    po_reason = None
+    if po_valid:
+        po_detail = f"Unique open PO {po['po_code']} belongs to the matched vendor."
+    elif explicit and not found:
+        po_reason = "PO_NOT_REGISTERED"
+        po_detail = f"Extracted PO reference {explicit} is not in the active procurement references. Verify the original and approved PO/line records, then sync and revalidate; do not substitute another PO."
+    elif explicit and len(found) == 1 and found[0]['status'] != 'open':
+        po_reason = "PO_CLOSED"
+        po_detail = f"PO {explicit} is closed. Procurement must verify its authorization; an invoice correction cannot reopen a PO."
+    elif explicit and len(found) == 1 and vendor and found[0]['vendor_code'] != vendor['vendor_code']:
+        po_reason = "PO_VENDOR_MISMATCH"
+        po_detail = f"PO {explicit} belongs to a different vendor. Verify the original and procurement records before any acceptance."
+    elif len(found) > 1:
+        po_reason = "AMBIGUOUS_PO"
+        po_detail = "Several exact PO candidates require a reasoned admin selection. Keep the extracted PO reference empty when the invoice does not print one."
+    else:
+        po_reason = "PO_NOT_MATCHED"
+        po_detail = "No unique open PO matches the approved vendor and invoice lines. Verify source fields and procurement references; no fuzzy automatic match."
+    check("po_match", po_valid, po_detail)
+    if po_reason:
+        check_map['po_match']['reason_code'] = po_reason
 
     duplicate = ledger.get("duplicate") is True
     check("duplicate_check", not duplicate,
@@ -260,6 +280,9 @@ def _evaluate(candidate, document, reference, ledger, selected_po=None):
     tolerance = int(rule["arithmetic_tolerance_minor"]) if rule else 0
     price_bps = int(rule["price_tolerance_bps"]) if rule else 0
     allocation_errors = []
+    if any(type(index) is not int or not 0 <= index < len(candidate.line_items) for index in line_mappings):
+        allocation_errors.append("A manual mapping references a nonexistent invoice line.")
+    mapping_evidence = []
     arithmetic_errors = []
     allocations_by_code = {}
     inclusive_rates = _inclusive_rates(document)
@@ -274,6 +297,16 @@ def _evaluate(candidate, document, reference, ledger, selected_po=None):
         matches = [row for row in allowed_lines if
                    _identity(row["description"]) == _identity(line.description.value) and
                    _identity(row["unit"]) == _identity(line.unit.value)]
+        if index in line_mappings:
+            matches = [row for row in allowed_lines if po_valid and currency_valid
+                       and _identity(line.description.value)
+                       and row['line_code'] == line_mappings[index]
+                       and _identity(row['unit']) == _identity(line.unit.value)]
+            if len(matches) == 1:
+                mapping_evidence.append({'invoice_line': index, 'po_code': po['po_code'],
+                    'po_line_code': matches[0]['line_code'], 'source_description': line.description.value,
+                    'source': line.description.source.model_dump(mode='json') if line.description.source else None,
+                    'po_description': matches[0]['description'], 'reference_version_id': str(reference['id'])})
         quantity = _quantity(line.quantity.value)
         unit = _money(line.unit_price.value, currency)
         printed_net = _money(line.net_amount.value, currency)
@@ -395,13 +428,28 @@ def _evaluate(candidate, document, reference, ledger, selected_po=None):
     check("po_balance", not balance_errors,
           "Payable and cumulative quantities fit current commitments; final SQL lock will recheck."
           if not balance_errors else "; ".join(balance_errors))
+    # Keep the original pass/review/fail decisions. These annotations explain
+    # why a dependent check cannot finish; they never grant eligibility.
+    if not po_valid:
+        for code in ('currency', 'line_allocation', 'arithmetic', 'po_balance'):
+            if check_map[code]['status'] == 'pass':
+                continue
+            if code == 'currency' and (currency is None or rule is None):
+                continue  # Unsupported currency/missing policy is its own issue.
+            check_map[code]['blocked_by'] = ['po_match']
+            check_map[code]['detail'] = 'Waiting for a valid purchase-order match before evaluating ' + {
+                'currency': 'invoice/PO currency agreement.',
+                'line_allocation': 'authorized line quantities, units, prices and tax.',
+                'arithmetic': 'the invoice against supported PO-line allocations.',
+                'po_balance': 'available PO value and cumulative quantities.',
+            }[code]
     all_pass = all(check_map[code]["status"] == "pass" for code in CHECK_CODES)
     verdict = "eligible" if all_pass else "blocked" if duplicate else "needs_review"
-    mode = ("automatic" if rule["auto_accept_enabled"] else "admin_required") if all_pass else "not_allowed"
+    mode = ("automatic" if rule["auto_accept_enabled"] and not (selected_po or line_mappings or verified_ocr_fields) else "admin_required") if all_pass else "not_allowed"
     if all_pass:
         summary = "All nine checks pass. " + ("Ready for atomic automatic acceptance." if mode == "automatic" else "Policy requires an administrator to accept.")
     else:
-        failed = [code for code in CHECK_CODES if check_map[code]["status"] != "pass"]
+        failed = [code for code in CHECK_CODES if check_map[code]["status"] != "pass" and not check_map[code].get("blocked_by")]
         summary = ("Already processed; no second acceptance. " if duplicate else "Needs verification; no acceptance. ") + "Check: " + ", ".join(failed) + "."
     unresolved = sorted(set(missing + [item.field for item in evidence_issues]))
     revision = {
@@ -412,6 +460,9 @@ def _evaluate(candidate, document, reference, ledger, selected_po=None):
         "line_items": [line.model_dump(mode="json") for line in candidate.line_items],
         "evidence": {"candidate": candidate.model_dump(mode="json"), "document": document.model_dump(mode="json"),
                      "issues": [item.model_dump(mode="json") for item in evidence_issues],
+                     "raw_issues": [item.model_dump(mode="json") for item in raw_evidence_issues],
+                     "review_context": {"line_mappings": mapping_evidence,
+                                        "verified_ocr_fields": sorted(set(verified_ocr_fields))},
                      "derived_allocation": {"net_minor": net_sum, "tax_minor": tax_sum,
                                             "gross_minor": gross_sum,
                                             "basis": "Supported invoice quantities/unit prices and exact PO tax basis; never an inferred payable."}},

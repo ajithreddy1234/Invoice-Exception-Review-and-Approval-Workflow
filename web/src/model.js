@@ -187,8 +187,9 @@ export function decisionSummary(data) {
     EXTRACTION_TIMEOUT: "The extraction service timed out after one retry. No invoice was accepted. You can rerun verification.",
   };
   if (providerErrors[data.run?.error_code]) return providerErrors[data.run.error_code];
-  const failed = (data.validation?.checks || [])
-    .filter((c) => c.status !== "pass")
+  const unresolved = (data.validation?.checks || []).filter(c => c.status !== "pass");
+  const roots = unresolved.filter(c => !(c.status === "review" && Array.isArray(c.blocked_by) && c.blocked_by.length));
+  const failed = (roots.length ? roots : unresolved)
     .map((c) => CHECKS.find(([code]) => code === c.code)?.[1] || human(c.code));
   if (!data.validation)
     return data.run?.error_code

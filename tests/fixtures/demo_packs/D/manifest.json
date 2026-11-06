@@ -1,0 +1,195 @@
+{
+  "pack": "D",
+  "synthetic": true,
+  "generator_version": "demo-pack-v2",
+  "fixtures": [
+    {
+      "file": "01_clean_invoice.pdf",
+      "title": "Clean PDF",
+      "expected": "Accepted when all nine checks pass",
+      "prerequisite": "Use this first, with an unused pack.",
+      "sha256": "b8e7932efe0d44bd3e59dc26525a8e7a1db8fa620b8b1919201eb09da0f186ce",
+      "bytes": 2751,
+      "invoice_number": "INV-DEMO-D-FULL-01",
+      "po_code": "PO-DEMO-D-FULL"
+    },
+    {
+      "file": "02_duplicate_invoice.pdf",
+      "title": "Duplicate",
+      "expected": "Blocked duplicate",
+      "prerequisite": "First accept 01_clean_invoice.pdf.",
+      "sha256": "b8e7932efe0d44bd3e59dc26525a8e7a1db8fa620b8b1919201eb09da0f186ce",
+      "bytes": 2751,
+      "invoice_number": "INV-DEMO-D-FULL-01",
+      "po_code": "PO-DEMO-D-FULL"
+    },
+    {
+      "file": "03_partial_6000.pdf",
+      "title": "Partial invoice",
+      "expected": "Accepted; INR 4,000 remains",
+      "prerequisite": "Use before the two partial-billing checks below.",
+      "sha256": "767ed6f32b22fe2c5a73a66189b9ab3e0ed1449de2d4a575a1d32c099b5d6de9",
+      "bytes": 2753,
+      "invoice_number": "INV-DEMO-D-PART-01",
+      "po_code": "PO-DEMO-D-PARTIAL"
+    },
+    {
+      "file": "04_partial_over_4500.pdf",
+      "title": "Over the remaining balance",
+      "expected": "Needs review; balance is insufficient",
+      "prerequisite": "After 03_partial_6000.pdf, before 05_partial_remainder_4000.pdf.",
+      "sha256": "74792d7554fe009f94820641d55e4aefa943e494b7a27f7ac578230aefea428d",
+      "bytes": 2761,
+      "invoice_number": "INV-DEMO-D-PART-OVER",
+      "po_code": "PO-DEMO-D-PARTIAL"
+    },
+    {
+      "file": "05_partial_remainder_4000.pdf",
+      "title": "Remaining balance fits",
+      "expected": "Accepted if the remaining INR 4,000 is unused",
+      "prerequisite": "Optional: use after demonstrating the INR 4,500 hold.",
+      "sha256": "0f93051b2e9079ea54e3c3ad205d56bbd2a91f1aaab7533c317521e62de2ad24",
+      "bytes": 2759,
+      "invoice_number": "INV-DEMO-D-PART-FINAL",
+      "po_code": "PO-DEMO-D-PARTIAL"
+    },
+    {
+      "file": "06_ambiguous_po.pdf",
+      "title": "Ambiguous purchase order",
+      "expected": "Needs review; two exact PO candidates",
+      "prerequisite": "No printed PO. Admin may choose an exact candidate, revalidate and explicitly accept.",
+      "sha256": "60eb5c99a08a83105bc0f36463bacafbb0b573c81d4a533cdb1e9ef51871e20a",
+      "bytes": 2718,
+      "invoice_number": "INV-DEMO-D-AMB-01",
+      "po_code": null
+    },
+    {
+      "file": "07_blurred_total.pdf",
+      "title": "Unreadable payable",
+      "expected": "Needs review; printed payable is unreadable",
+      "prerequisite": "Independent scan PO. Other visible amounts must not substitute for a printed payable.",
+      "sha256": "6d5168b1f030bd3f602ed83cdb63c0a8d84ed08eee4fe4a82d480e5df3872a66",
+      "bytes": 118244,
+      "invoice_number": "INV-DEMO-D-SCAN-01",
+      "po_code": "PO-DEMO-D-SCAN"
+    },
+    {
+      "file": "08_admin_line_review.pdf",
+      "title": "Admin resolves description difference",
+      "expected": "Needs review; eligible after reasoned PO-line mapping, then explicit admin acceptance",
+      "prerequisite": "Independent review PO. Preserve printed wording; map line 1 to SERVICE. No financial limit is waived.",
+      "sha256": "8cc6133b58bbce3fe02825cacb33ce4d855b37de64b0147f4a4784388a6f62f1",
+      "bytes": 2758,
+      "invoice_number": "INV-DEMO-D-REVIEW-01",
+      "po_code": "PO-DEMO-D-REVIEW"
+    }
+  ],
+  "reference_rows": {
+    "PurchaseOrders": [
+      {
+        "po_code": "PO-DEMO-D-FULL",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "full"
+      },
+      {
+        "po_code": "PO-DEMO-D-PARTIAL",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      },
+      {
+        "po_code": "PO-DEMO-D-SCAN",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "full"
+      },
+      {
+        "po_code": "PO-DEMO-D-AMBIG-A",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      },
+      {
+        "po_code": "PO-DEMO-D-AMBIG-B",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      },
+      {
+        "po_code": "PO-DEMO-D-REVIEW",
+        "vendor_code": "V-ACME",
+        "currency": "INR",
+        "authorized_gross": "10000.00",
+        "status": "open",
+        "billing_mode": "partial"
+      }
+    ],
+    "POLines": [
+      {
+        "po_code": "PO-DEMO-D-FULL",
+        "line_code": "SERVICE",
+        "description": "Office support - demo D",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-D-PARTIAL",
+        "line_code": "SERVICE",
+        "description": "Consulting services - demo D",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-D-SCAN",
+        "line_code": "SERVICE",
+        "description": "Document support - demo D",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-D-AMBIG-A",
+        "line_code": "SERVICE",
+        "description": "Website design - demo D",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-D-AMBIG-B",
+        "line_code": "SERVICE",
+        "description": "Website design - demo D",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      },
+      {
+        "po_code": "PO-DEMO-D-REVIEW",
+        "line_code": "SERVICE",
+        "description": "Office operations support - demo D",
+        "quantity": "10.0000",
+        "unit": "hour",
+        "unit_net": "1000.00",
+        "tax_rate_percent": "0.00"
+      }
+    ]
+  }
+}

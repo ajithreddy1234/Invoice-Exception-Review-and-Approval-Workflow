@@ -22,7 +22,8 @@ def render(data,mime,page):
             finally:p.close()
     elif mime in ('image/jpeg','image/png') and page==1:
         Image.MAX_IMAGE_PIXELS=MAX_IMAGE_PIXELS
-        with Image.open(io.BytesIO(data)) as original:
+        expected='JPEG' if mime=='image/jpeg' else 'PNG'
+        with Image.open(io.BytesIO(data),formats=[expected]) as original:
             if original.width*original.height>MAX_IMAGE_PIXELS:raise ValueError('PREVIEW_LIMIT')
             img=ImageOps.exif_transpose(original).convert('RGB');img.thumbnail((1600,1600))
     else:raise ValueError('PAGE_NOT_FOUND')

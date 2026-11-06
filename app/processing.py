@@ -16,7 +16,7 @@ from .publication import PublicationConflict, SheetsPublisher
 from .rules import evaluate
 from .extraction_cache import saved_extraction, extraction_metadata
 
-PIPELINE_VERSION = 'invoice-v0.9'
+PIPELINE_VERSION = 'invoice-v0.11'
 
 
 def audit(conn, sid, event, actor=None, run=None, stage=None, details=None):

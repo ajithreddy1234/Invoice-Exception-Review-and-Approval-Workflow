@@ -1,6 +1,9 @@
 # Case-study completion and company readiness
 
-Assessment: 6 November 2026, application v0.9.0.
+Assessment: 6 November 2026. Local candidate v0.11 includes controlled admin
+adjudication, clearer PO-dependent checks, strict processing readiness and an
+imaging-library security update; the separately verified deployed application is v0.9.0. Candidate
+changes are not deployed. See ADMIN-REVIEW.md and RELEASE-CHECKLIST.md.
 
 The running application implements PS-1's invoice-to-decision workflow. It has
 upload, observable processing stages, source evidence, nine checks, admin review,
@@ -54,7 +57,26 @@ Changing the reader/prompt/pipeline versions invalidates old extraction reuse;
 the first processing of an old unaccepted file needs current provider capacity.
 Previously accepted records remain unchanged and still block duplicates.
 
+The v0.11 cleanup adds missing/closed/wrong-vendor PO reason codes, neutral
+waiting states for dependent checks, contextual admin instructions and the actual
+invoice identifier beside the filename. Eligibility and SQL guarantees are
+unchanged. Readiness now refuses an incomplete/paused processing service. Storage
+handles a bounded JSON-wrapped missing-object response without confusing other
+provider errors with deletion. Pillow is upgraded from 12.3.0 to patched 13.0.0,
+and image readers/previews allow only the supported decoders. See VERIFICATION.md
+for audit and regression scope. These changes do not close the company gates below.
+
 ## Required before real company use
+
+Scope clarification: extraction caching and one bounded transient retry are
+implemented. Vendor tax registration IDs are imported/stored but not extracted
+and compared to invoices. Invoice dates must be valid supported calendar dates;
+there is no configurable future-date, invoice-age or PO-date policy. Admins may
+currently accept their own uploads when eligible; independent-approver separation
+is not enforced. Original retention is fixed at seven days, not configurable.
+These are open controls, not claims of completed production behavior. Tax-ID and
+date rules need defined missing/mismatch and exception handling; approval and
+retention policies must be agreed before company rollout.
 
 | Gate | Why it is legitimate | Required decision or implementation |
 | --- | --- | --- |

@@ -7,8 +7,10 @@ see only their own records; administrators have workspace-wide access.
 ## Service checks
 
 `/health/live` reports the application version and uptime without contacting
-external providers. `/health/ready` returns 503 during initialization or when the
-reference/database checks fail. Inspect **Procurement & service health** on the
+external providers. `/health/ready` returns 503 during initialization, missing
+processing configuration, stale references, failed database checks, stopped workers
+or an intentional processing pause. Keep the host's restart check on liveness;
+readiness is an operational processing signal. Inspect **Procurement & service health** on the
 administrator dashboard for startup, worker, configuration and reference status.
 A configured key is not proof that a provider currently has quota or availability.
 
@@ -26,6 +28,13 @@ An accepted decision may have pending spreadsheet publication. Retry publication
 from the admin dashboard; do not upload or accept the invoice again to repair its
 report. Assigned report rows must not be manually sorted, inserted or deleted.
 Investigate a reconciliation warning rather than overwriting another record.
+
+Resolve a missing PO against the original and genuinely approved procurement
+records. Do not replace its printed reference with an unrelated available PO.
+Dependent checks wait for the match and still prevent acceptance. Closed POs and
+wrong-vendor POs have distinct explanations; refresh references only after an
+authorized procurement change. Ambiguous invoices require a reasoned selection
+among exact candidates, then a separate acceptance after revalidation.
 
 Uncertain source fields stay unknown. Request a clearer original or make an
 evidenced admin correction with a reason. Corrections create a new revision and
