@@ -1,9 +1,12 @@
-# v0.12 case-study update — local review candidate
+# v0.12 case-study update
 
 The update makes existing invoice decisions easier to explain and verify. It
 does not change financial rules, the acceptance transaction or the database
-schema. The hosted release last verified is v0.11; v0.12 is not deployed by this
-change. No cloud invoice, reference, commitment or spreadsheet row was changed.
+schema. After owner review/approval, v0.12 was deployed on 7 November 2026 and
+verified on the hosted service. The original local candidate made no cloud
+financial writes. The approved release check added exactly one fresh synthetic
+acceptance/report row; all four prior invoice records and unused Pack B were
+preserved. See [hosted verification](VERIFICATION.md).
 
 ## What the evaluator can now inspect
 
@@ -64,14 +67,23 @@ initially aimed at port 8000; it was corrected to the configured port 10000 befo
 the recorded successful check. One Starlette/httpx test-client deprecation warning
 remains. Package audits are not a complete security review.
 
-## Remaining submission work
+## Hosted result and remaining submission work
 
-After owner review/approval, release the complete frontend/backend together and
-verify v0.12 on the actual hosted service: version/assets, both roles, source
-privacy, one fresh extraction, one exact acceptance and matching Sheet row.
-Preserve existing records and reserve a genuinely unused approved pack. Measure
-an idle-host wake-up separately; local Docker timings do not prove hosted capacity
-or Render cold-start performance.
+Application commit `71426b1` has the exact tested tree of local candidate
+`25b988d`. Render deployment `dep-dbn4ltlckfvc73f8n5i0` succeeded. All 37
+authenticated workflow checks and 12 deployment checks passed. The fresh card
+invoice `INV-LAYOUT-CARD-01` used unused PO-BETA authorization, passed all nine
+checks and recorded INR 10,000 once; its exact acceptance ID was independently
+read from `AcceptedInvoices!A5:K5`. Both roles, source privacy, immutable policy,
+saved timings, scoped metrics and existing admin history were checked. The
+browser also verified the new decision, dashboard filters and historical review.
+
+The v0.11/v0.9 rollback branches/deployments remain available. No schema migration,
+ledger reset, procurement reference row addition or paid resource change was made.
+Startup performed its normal validated re-import of existing procurement data.
+Pack B's five POs and seven fixture identities remain unused at this dated check.
+Measure an idle-host wake-up separately; neither this warm hosted run nor local
+Docker timings prove concurrent capacity or Render cold-start performance.
 
 Rehearse the [five-minute script](DEMO.md). A missing blurred total stays held;
 use an exact ambiguous PO or source-supported line mapping as the resolvable admin

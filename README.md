@@ -159,8 +159,9 @@ Never delete acceptances or rewrite report rows to rehearse.
 
 See the [release checklist](docs/RELEASE-CHECKLIST.md) for local versus hosted
 verification boundaries and the complete review-before-deployment gate.
-The [v0.12 case-study update](docs/CASE-STUDY-UPDATE.md) records this local
-candidate's changes and evidence separately from the hosted v0.11 verification.
+The [v0.12 case-study update](docs/CASE-STUDY-UPDATE.md) records the changes, local
+tests and approved hosted verification, including one fresh acceptance and its
+independently verified spreadsheet row.
 
 ```sh
 .venv/bin/python -m pytest -q

@@ -1,12 +1,12 @@
 # Case-study release gate
 
-Version 0.11.0 was deployed with owner approval on 6 November 2026. Its hosted
-workflow and exact assets passed verification; see VERIFICATION.md. The v0.9
-rollback branch/deployment are retained. The checklist below governs subsequent
+Version 0.12.0 was deployed with owner approval on 7 November 2026. Its hosted
+workflow and exact assets passed verification; see VERIFICATION.md. The v0.11/v0.9
+rollback branches/deployments are retained. The checklist below governs subsequent
 releases: review the complete candidate before production updates. A local server
 with the normal .env may point at hosted data; it is not isolated staging.
 
-The v0.12 local candidate is described in [CASE-STUDY-UPDATE.md](CASE-STUDY-UPDATE.md).
+The v0.12 local and hosted evidence is described in [CASE-STUDY-UPDATE.md](CASE-STUDY-UPDATE.md).
 It has no schema or financial-rule changes. Its browser walkthrough used the
 actual React/API with a disposable native Postgres database and real PDF/OCR;
 external Auth/model/publication were explicitly simulated. A separate eight-input

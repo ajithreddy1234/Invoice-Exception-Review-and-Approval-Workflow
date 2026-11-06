@@ -1,0 +1,205 @@
+{
+  "origin": "https://asa-invoice-review.onrender.com",
+  "expected_version": "0.12.0",
+  "commit": "71426b1d890b73d0bbd6b9c7ff789e6d20ce7f0b",
+  "recorded_at_utc": "2026-11-06T21:49:13.360017+00:00",
+  "scope": "Approved v0.12 release: one fresh varied-layout synthetic acceptance against unused PO-BETA; all prior invoices and Pack B preserved",
+  "checks": [
+    {
+      "check": "deployed_version_and_processing_ready",
+      "passed": true
+    },
+    {
+      "check": "exact_deployed_asset",
+      "passed": true,
+      "asset": "/assets/invoice-mark-BpbPKSL6.svg"
+    },
+    {
+      "check": "exact_deployed_asset",
+      "passed": true,
+      "asset": "/assets/index-DyKBWYlE.js"
+    },
+    {
+      "check": "exact_deployed_asset",
+      "passed": true,
+      "asset": "/assets/index-C-PgErs5.css"
+    },
+    {
+      "check": "upload_privacy_and_review_guidance_shipped",
+      "passed": true
+    },
+    {
+      "check": "unauthenticated_source_denied",
+      "passed": true
+    },
+    {
+      "check": "admin_login",
+      "passed": true,
+      "seconds": 0.882
+    },
+    {
+      "check": "restricted_database_gate_and_workers",
+      "passed": true
+    },
+    {
+      "check": "verification_po_and_reserved_pack_unused",
+      "passed": true
+    },
+    {
+      "check": "own_admin_session_logged_out",
+      "passed": true
+    },
+    {
+      "check": "user_login",
+      "passed": true,
+      "seconds": 0.532
+    },
+    {
+      "check": "normal_user_admin_denied",
+      "passed": true
+    },
+    {
+      "check": "normal_user_register_scoped",
+      "passed": true
+    },
+    {
+      "check": "one_synthetic_upload_queued",
+      "passed": true
+    },
+    {
+      "check": "fresh_provider_extraction",
+      "passed": true
+    },
+    {
+      "check": "all_nine_checks_pass",
+      "passed": true
+    },
+    {
+      "check": "accepted_correct_source_and_po",
+      "passed": true
+    },
+    {
+      "check": "publication_confirmed",
+      "passed": true
+    },
+    {
+      "check": "business_facts_match_committed_ledger",
+      "passed": true
+    },
+    {
+      "check": "real_saved_stage_timestamps_and_durations",
+      "passed": true
+    },
+    {
+      "check": "actual_validation_snapshot_and_policy",
+      "passed": true
+    },
+    {
+      "check": "owner_historical_revision_visible",
+      "passed": true
+    },
+    {
+      "check": "cross_submission_revision_denied",
+      "passed": true
+    },
+    {
+      "check": "normal_user_metrics_ownership_scoped",
+      "passed": true
+    },
+    {
+      "check": "normal_user_has_db_timing_aggregates",
+      "passed": true
+    },
+    {
+      "check": "private_original_hash",
+      "passed": true
+    },
+    {
+      "check": "private_page_preview",
+      "passed": true
+    },
+    {
+      "check": "logged_out_source_denied",
+      "passed": true
+    },
+    {
+      "check": "admin_login",
+      "passed": true,
+      "seconds": 0.448
+    },
+    {
+      "check": "existing_invoices_unchanged",
+      "passed": true
+    },
+    {
+      "check": "exactly_one_acceptance_and_amount_added",
+      "passed": true
+    },
+    {
+      "check": "predeployment_invoices_and_amounts_preserved",
+      "passed": true
+    },
+    {
+      "check": "admin_metrics_cover_full_workspace",
+      "passed": true
+    },
+    {
+      "check": "fresh_beta_acceptance_is_straight_through",
+      "passed": true
+    },
+    {
+      "check": "existing_admin_history_keeps_evidence",
+      "passed": true
+    },
+    {
+      "check": "recruiter_pack_b_still_unused",
+      "passed": true
+    },
+    {
+      "check": "independent_sheet_row_matches_acceptance",
+      "passed": true
+    }
+  ],
+  "before": {
+    "invoices": 4,
+    "accepted": 3,
+    "committed_minor": 2500000
+  },
+  "request_key": "f74e3f1c-2a9a-41ac-8b75-3198d7183596",
+  "submission_id": "01c675b9-c84a-44dd-a581-f7e98c73d3bf",
+  "processing_seconds": 23.648,
+  "observed_status": "accepted",
+  "run_error": null,
+  "timing": {
+    "stages": [
+      {
+        "stage": "reading_document",
+        "started_at": "2026-11-06T21:49:27.546754+00:00",
+        "finished_at": "2026-11-06T21:49:35.141695+00:00",
+        "seconds": 7.595,
+        "state": "recorded"
+      },
+      {
+        "stage": "extracting_fields",
+        "started_at": "2026-11-06T21:49:35.141695+00:00",
+        "finished_at": "2026-11-06T21:49:41.335987+00:00",
+        "seconds": 6.194,
+        "state": "recorded"
+      },
+      {
+        "stage": "validating",
+        "started_at": "2026-11-06T21:49:41.335987+00:00",
+        "finished_at": "2026-11-06T21:49:42.949891+00:00",
+        "seconds": 1.614,
+        "state": "recorded"
+      }
+    ],
+    "queue_seconds": 2.242,
+    "processing_seconds": 16.537
+  },
+  "acceptance_id": "3787563d-b6d3-44e5-894e-6cc40fb883d8",
+  "sheet_range": "'AcceptedInvoices'!A5:K5",
+  "sheet_id": 2069135125,
+  "sheet_url": "https://docs.google.com/spreadsheets/d/1d51JZbEeDr4BTKDmYYSXY39_-uD5DAInkUq6Ropwu6w/edit#gid=2069135125",
+  "passed": true
+}

@@ -1,11 +1,48 @@
 # Verification and practical limits
 
+Hosted v0.12.0, 7 November 2026 (India time), application commit
+`71426b1d890b73d0bbd6b9c7ff789e6d20ce7f0b`:
+
+- Owner-approved deployment `dep-dbn4ltlckfvc73f8n5i0` serves the exact tested tree
+  `cf01a6ef7cea397e34d9fcc7f1761d328546b248` from local candidate `25b988d`.
+  All three built JS/CSS/logo asset hashes match. The GitHub connector created a
+  new commit identity; the application files are byte-identical to the candidate.
+- 37 authenticated workflow checks and 12 unauthenticated deployment checks
+  passed. Real admin/user logins, denied normal-user admin access, the restricted
+  database gate, readiness/workers and source privacy were verified.
+- One new varied-layout card invoice, INV-LAYOUT-CARD-01 / PO-BETA / INR 10,000,
+  used fresh Gemini extraction and passed all nine checks. Exactly one acceptance
+  was added: `3787563d-b6d3-44e5-894e-6cc40fb883d8`, submission
+  `01c675b9-c84a-44dd-a581-f7e98c73d3bf`. Independent service-account reading of
+  `AcceptedInvoices!A5:K5` verified that same identity, invoice, PO and amount.
+- Upload-through-publication polling observed 23.648 seconds; saved processing
+  duration is 16.537 seconds and queue wait 2.242 seconds. These measure different
+  boundaries on one run, not a latency guarantee or an idle cold start. Saved
+  reading/extracting/validating events supply real stage durations.
+- New business facts agree with the ledger/report; policy belongs to the exact
+  validation snapshot. Owner-accessible revision history, cross-submission denial,
+  ownership-scoped metrics, exact database timing aggregates and historical admin
+  evidence were checked. Browser inspection verified the new acceptance, loaded
+  private preview, historical reviewer/reason and vendor-filtered metrics.
+- All four prior invoices, acceptance amounts and publication statuses were
+  preserved. Total accepted value became INR 35,000 from INR 25,000, with four
+  acceptances and one rejection. Pack B's five POs still have zero commitments;
+  its seven fixture identities remain unused. This is a dated observation.
+- Normal startup re-imported unchanged reference data; no new procurement rows,
+  schema migration, ledger reset, paid resource or credential change was made.
+  v0.11 and v0.9 rollback branches/deployments are retained. Credential rotation
+  remains owner-controlled and unconfirmed. Recording and genuinely idle-host
+  timing remain separate tasks.
+
+See [saved hosted checks](evidence/v0.12-hosted-verification.json) and
+[deployment checks](evidence/v0.12-deployment-smoke.json).
+
 Local v0.12 review candidate, 7 November 2026 (India time): see
 [case-study update and evidence](CASE-STUDY-UPDATE.md). It adds business explanations,
 recorded timings, read-only revision inspection, scoped database metrics and
 varied synthetic inputs. All local checks passed; eight fresh Gemini extractions
 produced four eligible/four review outcomes without cloud ledger writes. The
-hosted results below remain v0.11 evidence, not hosted verification of v0.12.
+v0.11 results below remain historical evidence; v0.12 hosted results are above.
 
 Hosted v0.11.0, 6 November 2026 (India time), application commit
 `b5edb8b839bf7d1867203e19e0a1ab14f966d1c9`:

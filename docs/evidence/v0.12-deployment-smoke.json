@@ -1,0 +1,74 @@
+{
+  "origin": "https://asa-invoice-review.onrender.com",
+  "recorded_at_utc": "2026-11-06T21:49:29.467415+00:00",
+  "scope": "UNAUTHENTICATED_DEPLOYMENT_SMOKE_NO_LEDGER_WRITES",
+  "checks": [
+    {
+      "check": "liveness",
+      "passed": true,
+      "http_status": 200,
+      "seconds": 0.371
+    },
+    {
+      "check": "readiness",
+      "passed": true,
+      "http_status": 200
+    },
+    {
+      "check": "built_frontend",
+      "passed": true
+    },
+    {
+      "check": "private_cache_and_frame_protection",
+      "passed": true
+    },
+    {
+      "check": "frontend_asset",
+      "passed": true,
+      "asset": "/assets/index-C-PgErs5.css",
+      "http_status": 200
+    },
+    {
+      "check": "frontend_asset",
+      "passed": true,
+      "asset": "/assets/index-DyKBWYlE.js",
+      "http_status": 200
+    },
+    {
+      "check": "frontend_asset",
+      "passed": true,
+      "asset": "/assets/invoice-mark-BpbPKSL6.svg",
+      "http_status": 200
+    },
+    {
+      "check": "unauthenticated_access_denied",
+      "passed": true,
+      "endpoint": "/api/me",
+      "http_status": 401
+    },
+    {
+      "check": "unauthenticated_access_denied",
+      "passed": true,
+      "endpoint": "/api/submissions",
+      "http_status": 401
+    },
+    {
+      "check": "unauthenticated_access_denied",
+      "passed": true,
+      "endpoint": "/api/invoices",
+      "http_status": 401
+    },
+    {
+      "check": "unauthenticated_access_denied",
+      "passed": true,
+      "endpoint": "/api/admin/health",
+      "http_status": 401
+    },
+    {
+      "check": "cross_origin_login_denied",
+      "passed": true,
+      "http_status": 403
+    }
+  ],
+  "passed": true
+}
