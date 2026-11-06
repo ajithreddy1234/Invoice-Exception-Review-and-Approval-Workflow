@@ -1,5 +1,37 @@
 # Verification and practical limits
 
+Hosted v0.11.0, 6 November 2026 (India time), application commit
+`b5edb8b839bf7d1867203e19e0a1ab14f966d1c9`:
+
+- 26 authenticated workflow checks and 12 unauthenticated deployment checks passed.
+  Public version/readiness and every built JS/CSS/logo asset match the tested
+  application. Real administrator/user logins, restricted database gate, admin
+  denial for a normal user and private source access were verified.
+- One authorized synthetic invoice, INV-1001 / PO-FULL / INR 10,000, used fresh
+  Gemini extraction, passed all nine checks and was accepted automatically.
+  Extraction-through-publication observation took 25.255 seconds including polling;
+  this is one run, not a latency guarantee. It was not a cached/provider-simulated run.
+- Download bytes matched the uploaded SHA-256; private PNG preview succeeded.
+  Logged-out access was denied. The accepted decision was published, and an
+  independent service-account read of AcceptedInvoices!A4:K4 confirmed the exact
+  acceptance/submission identity, PO, invoice number and amount.
+- All three pre-existing invoice states/acceptance/report links were preserved.
+  Exactly one invoice and INR 10,000 commitment were added. Pack B's five imported
+  POs remain unused; its seven fixture hashes were checked separately. This is a
+  dated observation; future uploads can consume those identities/budgets.
+- Render initially reported the deployment live while the public endpoint still
+  served v0.9. Restarting did not resolve it. A clean build with cache cleared
+  served v0.11 and matching assets, after which verification proceeded. No test
+  upload was made against the mismatched version. The cache/routing cause was
+  not established, and this is not a measured idle cold-start result.
+- The prior v0.9 commit remains available on the rollback/v0.9-live-20261106 branch
+  and as its retained Render deployment. No database migration, ledger reset,
+  new reference rows, paid service or credential rotation was performed.
+  Rotation of the previously disclosed database credential remains owner work.
+
+The local-candidate statements below describe the earlier verification boundary,
+before this hosted release. They do not override the results above.
+
 Local candidate v0.11.0, 6 November 2026 (India time):
 
 - 306 component tests and 45 subtests passed. The 65 isolated native tests are

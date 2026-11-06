@@ -1,16 +1,17 @@
 # Case-study release gate
 
-Candidate v0.11.0 is local only. Do not push main, deploy, import reference rows or
-run a worker against the hosted database until the owner approves the completed
-candidate. A local server with the normal .env may point at hosted data; it is
-not an isolated staging environment.
+Version 0.11.0 was deployed with owner approval on 6 November 2026. Its hosted
+workflow and exact assets passed verification; see VERIFICATION.md. The v0.9
+rollback branch/deployment are retained. The checklist below governs subsequent
+releases: review the complete candidate before production updates. A local server
+with the normal .env may point at hosted data; it is not isolated staging.
 
 ## Claims from the external reviews
 
 | Review concern | Current evidence/status |
 | --- | --- |
 | No repeatable fresh happy path | Pack generator and additive preparation already exist. B/C are shipped; local pack D adds an independent admin-review PO and eighth PDF. New packs use independent identities and budgets. Never delete ledger entries to rehearse. |
-| Hosted flow unverified | v0.9 hosted Auth, evidence/hash, paging, fresh provider extraction and duplicate protection were verified separately. Earlier hosted acceptance and Sheets publication evidence exists. This is not hosted verification of v0.11. |
+| Hosted flow unverified | v0.11 now has 26 authenticated workflow checks and 12 deployment checks, including fresh Gemini extraction, one exact acceptance and independently verified Sheet report. Historical v0.9 checks remain separately labelled. |
 | No extraction cache/retry | Implemented before v0.10: one bounded transient retry, visible cache origin, uploader/hash/version-scoped provider evidence reuse, and all checks rerun. Admin review permissions are never cached or inherited. |
 | README/DEMO cleanup | Product README and source-only operator walkthrough are already in place. No in-app demo guide or sample API is reintroduced. |
 | Weak admin discretion | v0.10 adds auditable description-to-PO-line mapping and grounded OCR-confidence confirmation. Financial/source constraints remain enforced. |

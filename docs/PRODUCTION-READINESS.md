@@ -1,9 +1,10 @@
 # Case-study completion and company readiness
 
-Assessment: 6 November 2026. Local candidate v0.11 includes controlled admin
+Assessment: 6 November 2026. Deployed v0.11 includes controlled admin
 adjudication, clearer PO-dependent checks, strict processing readiness and an
-imaging-library security update; the separately verified deployed application is v0.9.0. Candidate
-changes are not deployed. See ADMIN-REVIEW.md and RELEASE-CHECKLIST.md.
+imaging-library security update. The hosted application passed 26 authenticated
+workflow checks and 12 deployment checks after a clean rebuild. See VERIFICATION.md,
+ADMIN-REVIEW.md and RELEASE-CHECKLIST.md. Company gates below remain open.
 
 The running application implements PS-1's invoice-to-decision workflow. It has
 upload, observable processing stages, source evidence, nine checks, admin review,
