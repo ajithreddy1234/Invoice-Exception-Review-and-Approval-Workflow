@@ -12,11 +12,14 @@ review and blocks duplicate commitments.
 
 ## Try the demo
 
-Start with the **Recruiter Admin** login supplied privately with the submission.
-This one account can upload invoices, review exceptions and inspect the shared
-dashboard. Use the optional **Recruiter User** login in a separate browser
-session to try the uploader view, which shows only that account's submissions.
-The hosted workspace uses synthetic procurement records. Start with **Pack B**.
+**[Open the live app](https://asa-invoice-review.onrender.com/)** and sign in with **Recruiter Admin** to upload an invoice, review exceptions, and view the dashboard in one session.
+
+| Demo account | Email | Password |
+| --- | --- | --- |
+| Recruiter Admin | `recruiter.admin@invoice-review.example` | Reviewer access document |
+| Recruiter User | `recruiter.user@invoice-review.example` | Reviewer access document |
+
+Use the password in the private **Reviewer Access** document attached to the submission. **Recruiter User** is optional if you want to try the uploader view. This shared demo uses synthetic records. Start with **Pack B** for a fresh upload.
 
 | Order | Sample | What to look for |
 | --- | --- | --- |
