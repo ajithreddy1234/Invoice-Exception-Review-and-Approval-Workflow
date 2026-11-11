@@ -12,11 +12,11 @@ review and blocks duplicate commitments.
 
 ## Try the demo
 
-Use the two demo logins supplied privately with the submission. Sign in as the
-**submitter** to upload invoices and see your results. Open a separate browser
-session as the **admin** to see the workspace queue, resolve an exception with
-evidence and record a decision. The hosted workspace uses synthetic procurement
-records. Start with the PDFs in **Pack B**.
+Start with the **Recruiter Admin** login supplied privately with the submission.
+This one account can upload invoices, review exceptions and inspect the shared
+dashboard. Use the optional **Recruiter User** login in a separate browser
+session to try the uploader view, which shows only that account's submissions.
+The hosted workspace uses synthetic procurement records. Start with **Pack B**.
 
 | Order | Sample | What to look for |
 | --- | --- | --- |

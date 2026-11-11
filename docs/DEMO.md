@@ -6,12 +6,12 @@ the [hosted app](https://asa-invoice-review.onrender.com/) and
 [Pack B](../tests/fixtures/demo_packs/B/invoice-demo-B.zip). Extract the ZIP so the
 individual PDFs are ready to upload.
 
-## Set up the two sessions
+## Sign in
 
-Use the login IDs and passwords supplied privately with the submission. Open
-the submitter account in a regular browser window and the admin account in a
-private window or a separate browser profile. The sidebar shows **User** or
-**Admin**. Upload as the submitter and switch to the admin for the manual review.
+Use **Recruiter Admin** from the private reviewer handoff. That account can
+complete every step below, including uploads and the manual review. To
+demonstrate the two roles, optionally sign in as **Recruiter User** in a separate
+browser session, use it for uploads, then switch to **Recruiter Admin** for review.
 
 On the admin **Dashboard**, find **Purchase order balances**. The unused demo
 orders `PO-DEMO-B-FULL`, `PO-DEMO-B-PARTIAL`, `PO-DEMO-B-AMBIG-A`,
@@ -22,7 +22,7 @@ when first opened.
 
 ## 1. Accept a clean invoice
 
-As the submitter, open **Upload invoice**, choose
+Open **Upload invoice**, choose
 [01_clean_invoice.pdf](../tests/fixtures/demo_packs/B/01_clean_invoice.pdf) and click
 **Upload & verify**. The run should progress through reading, extraction and
 verification. Open **Source evidence** and point to the quote for the printed
@@ -61,7 +61,7 @@ normalized vendor and invoice identity when a file is re-exported.
 
 ## 4. Resolve an ambiguous purchase order as admin
 
-1. As the submitter, upload
+1. Upload
    [06_ambiguous_po.pdf](../tests/fixtures/demo_packs/B/06_ambiguous_po.pdf).
    Wait for **Needs review**. The original lists five hours of website design
    at ₹1,000 per hour and omits a PO number.
@@ -90,7 +90,7 @@ normalized vendor and invoice identity when a file is re-exported.
 
 ## 5. Handle an unreadable payable
 
-As the submitter, upload
+Upload
 [07_blurred_total.pdf](../tests/fixtures/demo_packs/B/07_blurred_total.pdf).
 This PDF uses a raster scan. The payable is unreadable and the invoice should
 stay in **Needs review** with no commitment. In the admin review queue, find
