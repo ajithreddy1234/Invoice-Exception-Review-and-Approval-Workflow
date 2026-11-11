@@ -1,138 +1,140 @@
-# Five-minute evaluator demonstration
+# Reviewer walkthrough
 
-App: https://asa-invoice-review.onrender.com
+This walkthrough demonstrates an automatic acceptance, a duplicate, a
+purchase order balance hold, an admin acceptance and an unreadable scan. It uses
+the [hosted app](https://asa-invoice-review.onrender.com/) and
+[Pack B](../tests/fixtures/demo_packs/B/invoice-demo-B.zip). Extract the ZIP so the
+individual PDFs are ready to upload.
 
-Use the dedicated admin/user credentials supplied privately. Do not put passwords
-in the repository, sample ZIPs or recording. The deployed application contains
-only the normal invoice workflow. Use this repository document for the walkthrough.
-Download the source archive and select a verified unused pack under
-`tests/fixtures/demo_packs/`; there is no in-app sample-download endpoint.
+## Set up the two sessions
 
-## Prepare
+Use the login IDs and passwords supplied privately with the submission. Open
+the submitter account in a regular browser window and the admin account in a
+private window or a separate browser profile. The sidebar shows **User** or
+**Admin**. Upload as the submitter and switch to the admin for the manual review.
 
-Reserve an unused, imported pack for the evaluator and use a different authorized
-PO for release verification. No static pack name guarantees unused data. Packs are shared across the workspace;
-check the actual invoice history and PO balances before starting. Re-uploading an accepted file
-must be blocked. The system never deletes the ledger to make a demo appear fresh.
+On the admin **Dashboard**, find **Purchase order balances**. The unused demo
+orders `PO-DEMO-B-FULL`, `PO-DEMO-B-PARTIAL`, `PO-DEMO-B-AMBIG-A`,
+`PO-DEMO-B-AMBIG-B` and `PO-DEMO-B-SCAN` each have ₹10,000 authorized.
+Look for the expected available amounts before recording. An acceptance in this
+shared workspace consumes the associated balance. The host may need to wake up
+when first opened.
 
-Open the deployment in advance, check reference freshness, and allow any inactive
-service to start. Choose an unused pack from `tests/fixtures/demo_packs/`. The package
-contains seven synthetic PDFs and a scenario guide. Their expected results are
-instructions for the evaluator, never inputs to extraction or approval logic.
+## 1. Accept a clean invoice
 
-## Demonstrate the process
+As the submitter, open **Upload invoice**, choose
+[01_clean_invoice.pdf](../tests/fixtures/demo_packs/B/01_clean_invoice.pdf) and click
+**Upload & verify**. The run should progress through reading, extraction and
+verification. Open **Source evidence** and point to the quote for the printed
+payable. Expect **Accepted**, **PO commitment · Recorded**, and ₹10,000
+committed on `PO-DEMO-B-FULL`.
 
-| Order | File | What to show |
-| --- | --- | --- |
-| 1 | `01_clean_invoice.pdf` | Real extraction, source quotes, all nine checks, automatic acceptance and separate spreadsheet publication status |
-| 2 | `02_duplicate_invoice.pdf` | Same source identity; blocked without another acceptance or balance deduction |
-| 3 | `03_partial_6000.pdf` | Accepts six of ten authorized hours; INR 4,000 remains |
-| 4 | `04_partial_over_4500.pdf` | Exceeds that remaining value/quantity; held without consuming balance |
-| 5 | `06_ambiguous_po.pdf` | No printed PO and two exact candidates within this pack; admin review is required |
-| 6 | `07_blurred_total.pdf` | Real OCR, unsupported payable total remains unknown; request a clearer source |
+Note the acceptance ID on the result. **Spreadsheet report** shows the status of
+the separate publication job. After it shows **Published**, a reviewer with
+Google Sheet access can search `AcceptedInvoices` for `INV-DEMO-B-FULL-01`
+and match the acceptance ID in column A, the PO in F and the amount in H.
+App accounts and Google Sheet sharing are managed separately. The backend uses
+a Google service account to read procurement data and publish the report.
 
-`05_partial_remainder_4000.pdf` is optional. Demonstrate the INR 4,500 hold first;
-accepting the final INR 4,000 consumes the remaining budget and changes later
-outcomes. Each pack's scan uses its own PO so the earlier clean acceptance does
-not mask source uncertainty with an already-consumed PO.
+## 2. Block a duplicate
 
-Keep the recording to five minutes. Use two deliberate exceptions, rather than
-rushing through the whole fixture set:
+Upload [02_duplicate_invoice.pdf](../tests/fixtures/demo_packs/B/02_duplicate_invoice.pdf)
+after step 1. It contains the same invoice bytes under another filename. Show
+**Blocked duplicate** and **PO commitment · Not recorded**. If available to
+your account, follow **Inspect prior accepted invoice**. The first acceptance
+remains the only commitment on the order. The application also checks the
+normalized vendor and invoice identity when a file is re-exported.
 
-| Time | Show |
-| --- | --- |
-| 0:00–0:30 | The buyer's problem: verify supplier charges without silently overspending a PO. The model extracts; code decides. |
-| 0:30–1:45 | One fresh clean extraction, saved stage timestamps, nine checks, the acceptance ID and its matching Sheet report row. |
-| 1:45–2:30 | Duplicate blocked; no second PO commitment. Follow the prior-record link only if the account has access. |
-| 2:30–4:15 | Ambiguous PO: inspect the exact candidates, select the supported one with a reason, save and revalidate, then explicitly accept separately. Show the saved revision. |
-| 4:15–5:00 | Dashboard outcomes, straight-through acceptance definition and timing sample; state the key limitations. |
+## 3. Compare an invoice with the remaining balance
 
-Choose the admin line-mapping example below instead of ambiguous PO if it better
-explains the business. Rehearse actual extraction/publication timing. If a live
-run needs longer, label any historical record you show; never substitute fake
-progress or describe cached extraction as fresh.
+1. Upload [03_partial_6000.pdf](../tests/fixtures/demo_packs/B/03_partial_6000.pdf).
+   Expect ₹6,000 accepted for six hours on `PO-DEMO-B-PARTIAL`. Show ₹4,000
+   and four hours left on that order.
+2. Upload
+   [04_partial_over_4500.pdf](../tests/fixtures/demo_packs/B/04_partial_over_4500.pdf).
+   Expect **Needs review**. In **Validation checks → Remaining PO balance**,
+   show that the requested ₹4,500 exceeds the remaining ₹4,000. The held
+   invoice records no commitment.
+3. If you want to verify the exact boundary after that example, upload
+   [05_partial_remainder_4000.pdf](../tests/fixtures/demo_packs/B/05_partial_remainder_4000.pdf).
+   It should accept the ₹4,000 remainder and bring the available balance to ₹0.
 
-A blurred **missing payable total is not the admin-acceptance example**. It must
-stay held while a clearer source is requested. An admin can confirm a grounded
-OCR confidence warning, but cannot derive a missing total from a PO or arithmetic.
+## 4. Resolve an ambiguous purchase order as admin
 
-## Explain the decisions
+1. As the submitter, upload
+   [06_ambiguous_po.pdf](../tests/fixtures/demo_packs/B/06_ambiguous_po.pdf).
+   Wait for **Needs review**. The original lists five hours of website design
+   at ₹1,000 per hour and omits a PO number.
+2. In the admin window, go to **Invoices**. Set **Status** to **Review queue**
+   and search for `INV-DEMO-B-AMB-01`. Open it. The **Purchase order match**
+   check should identify `PO-DEMO-B-AMBIG-A` and `PO-DEMO-B-AMBIG-B` as
+   exact candidates.
+3. Expand **Correct extraction & resolve PO**. Near the top, open
+   **Purchase order selection** and choose `PO-DEMO-B-AMBIG-A`. For this
+   synthetic example, treat that as the order the buyer confirmed. Leave the
+   separate **PO reference** text field empty because no PO is printed.
+4. In **Review reason**, enter the text below and click **Save & rerun checks**.
 
-The model proposes fields from page text. Deterministic checks decide eligibility;
-SQL locks the PO and rechecks source/reference freshness, duplicate identity and
-cumulative commitments. Postgres owns the financial ledger. Sheets supplies
-reference records and receives an acceptance report; its publication can retry
-without accepting again.
+   > For this demo, the buyer confirmed PO-DEMO-B-AMBIG-A. The original bills five hours of website design at INR 1,000 per hour.
 
-Admin correction requires source quotes and a reason, preserves earlier revisions
-and reruns the same checks. Selecting an ambiguous PO is limited to exact matches.
-Explicit approval is a separate action. An admin cannot invent an unreadable
-total or bypass failed financial/evidence checks. Acceptance never executes payment.
+5. Once the checks pass, show **PO commitment · Not recorded**. In
+   **Review actions → Decision reason**, enter the text below and click
+   **Accept with reason**.
 
-## If extraction is unavailable
+   > Confirmed the selected purchase order and verified the INR 5,000 amount.
 
-A transient 429/503/timeout is retried once with a visible stage. A second failure
-leaves the invoice unaccepted with a clear reason. Invalid candidate JSON, missing
-source fields and configuration/auth errors are not solved by repeated requests.
-For an identical previously reviewed file, matching original provider extraction
-can be reused for seven days for that uploader. **Using saved extraction** is
-shown explicitly; quotes and all nine checks are checked again against the current
-reference and ledger. Model/prompt/reader/pipeline changes force fresh extraction.
-There is no fixture-result shortcut. Show at least one fresh extraction and label
-any reused or historical evidence honestly.
+6. Show **Accepted** and the new ₹5,000 commitment. Under
+   **Extraction & review history → Saved revision**, inspect the admin
+   correction and review reason. Order A has ₹5,000 remaining. This invoice
+   uses its own order, separate from the partial order in step 3.
 
-## Prepare a later pack
+## 5. Handle an unreadable payable
 
-An authorized operator can generate another pack (for example D), inspect the
-read-only preparation plan, then append/import its matching references:
+As the submitter, upload
+[07_blurred_total.pdf](../tests/fixtures/demo_packs/B/07_blurred_total.pdf).
+This PDF uses a raster scan. The payable is unreadable and the invoice should
+stay in **Needs review** with no commitment. In the admin review queue, find
+`INV-DEMO-B-SCAN-01` and open **Original document**. Enter the reason below
+in **Review actions** and click **Request clearer invoice**.
+
+> The payable total on page 1 is unreadable. Please provide a clearer copy.
+
+The app records the request in the review history. The scan PO still has its
+full ₹10,000 balance.
+
+## Verify the result on the dashboard
+
+Open **Dashboard → Purchase order balances**. After the main walkthrough, the
+partial order shows ₹10,000 authorized, ₹6,000 committed and ₹4,000 available
+unless you used the optional remainder invoice. The admin-resolved order shows
+its own ₹5,000 commitment. Use the outcome counts and **Invoices** history to
+trace each result. [Metric definitions](METRICS.md)
+
+## Reruns and troubleshooting
+
+- **The clean sample shows Blocked duplicate.** Open the earlier acceptance.
+  If you need a fresh run, use an unused pack with its matching PO rows
+  imported into the workspace.
+- **The PO dropdown is missing.** Confirm the record is
+  `INV-DEMO-B-AMB-01`, that you are signed in as admin, and that the invoice
+  shows two exact candidates. The over-balance sample prints its own PO and
+  remains on that order.
+- **Extraction reports a provider error.** Use **Re-run verification** for
+  the affected unaccepted submission once processing is available. A reused
+  extraction is labeled **Using saved extraction** and the checks run again.
+- **An acceptance is recorded and the report is pending.** Check the
+  publication status separately. Retry and reconciliation guidance are in
+  the [operations guide](OPERATIONS.md).
+
+For an isolated workspace, an authorized operator can generate a new set of
+invoice and PO identities, preview its reference changes, then apply them.
 
 ```sh
-.venv/bin/python tools/generate_fixtures.py --pack D
-.venv/bin/python scripts/prepare_demo.py --packs D
-.venv/bin/python scripts/prepare_demo.py --packs D --apply
+.venv/bin/python tools/generate_fixtures.py --pack REVIEW2
+.venv/bin/python scripts/prepare_demo.py --packs REVIEW2
+.venv/bin/python scripts/prepare_demo.py --packs REVIEW2 --apply
 ```
 
-The assets remain offline; provide their ZIP separately for the walkthrough.
-Existing conflicting codes are rejected. Matching rows are reused without duplicates; unchanged current references
-do not need a new version. No accepted records or report rows are reset.
-
-## State the limits
-
-Single workspace, synthetic samples, English OCR, PDF/JPEG/PNG, 5 MiB and at most
-three pages. Originals expire after seven days; extracted evidence, hashes and
-ledger/audit history remain. There is no payment, email delivery, generated output
-invoice, currency conversion or ERP integration. Host sleep and model quotas are
-deployment dependencies. The native tests reproduce concurrency/rollback evidence
-in an isolated local Postgres database without resetting cloud data.
-
-## Controlled admin example
-
-Pack D includes `08_admin_line_review.pdf` and an independent REVIEW PO. Its
-printed description is abbreviated; all units, quantities and prices remain
-supported. Open admin review, map line 1 to SERVICE, give the
-business/evidence reason and save. Show that acceptance is still empty, then use
-the separate explicit acceptance action and inspect the recorded mapping. No
-printed field is rewritten to match the PO.
-
-Do not assume Pack D is unused or imported. Inspect the actual active references,
-history and remaining commitments first. Reference imports and financial writes
-need the workspace owner's authorization. New packs can include this example:
-
-```sh
-.venv/bin/python tools/generate_fixtures.py --pack E --admin-review
-```
-
-The normal source-only preparation tool can plan E's additive rows. Do not apply
-changes or reset accepted records just to make a rehearsal appear fresh. For a
-five-minute recording, prioritize a fresh clean acceptance, a duplicate and one
-reasoned admin resolution; use other edge cases during the live walkthrough.
-
-## Additional input-layout evidence
-
-`tests/fixtures/layouts/` contains eight clearly labelled synthetic inputs:
-ReportLab card/table layouts, actual LibreOffice Writer PDF exports, a rasterized
-scan and a simulated rotated photograph. See its README for independent-ledger
-requirements. These are robustness tests, not claims of supplier authenticity or
-real Zoho/Stripe exports. The evaluation script can exercise real Gemini without
-writing an acceptance or a spreadsheet row. Neither manifest expectations nor
-reference PO data are sent to the model.
+[Pack D's line-mapping example](../tests/fixtures/demo_packs/D/08_admin_line_review.pdf)
+and the [varied layout samples](../tests/fixtures/layouts/README.md) give further
+cases to try with their matching procurement references.
