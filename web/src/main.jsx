@@ -134,15 +134,14 @@ function Login({ onLogin, initialError, request }) {
           <aside className="reviewer-access" aria-label="Demo access">
             <strong>Demo access</strong>
             <p>
-              Use the email and password in the Reviewer Access document
-              included with the case study submission.
+              Open the document with the Google account it was shared with.
             </p>
             <a
-              href="https://github.com/ajithreddy1234/Invoice-Exception-Review-and-Approval-Workflow#try-the-demo"
+              href="https://docs.google.com/document/d/1QWNKBZvpMLAbUCUeNXhGQBDFMZZfmXVt/edit#heading=h.y2u8r7aliflu"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open the demo walkthrough <span aria-hidden="true">↗</span>
+              Get demo email and password <span aria-hidden="true">↗</span>
             </a>
           </aside>
           <ErrorBox>{error}</ErrorBox>
