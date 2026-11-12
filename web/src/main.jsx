@@ -130,10 +130,21 @@ function Login({ onLogin, initialError, request }) {
       <section className="login-form-panel">
         <form className="login-form" onSubmit={submit}>
           <span className="eyebrow muted">WORKSPACE ACCESS</span>
-          <h2>Welcome back</h2>
-          <p className="muted">
-            Sign in with your provisioned workspace account.
-          </p>
+          <h2>Sign in to Invoice Review</h2>
+          <aside className="reviewer-access" aria-label="Demo access">
+            <strong>Demo access</strong>
+            <p>
+              Use the email and password in the Reviewer Access document
+              included with the case study submission.
+            </p>
+            <a
+              href="https://github.com/ajithreddy1234/Invoice-Exception-Review-and-Approval-Workflow#try-the-demo"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open the demo walkthrough <span aria-hidden="true">↗</span>
+            </a>
+          </aside>
           <ErrorBox>{error}</ErrorBox>
           <label>
             Email address
@@ -186,10 +197,6 @@ function Login({ onLogin, initialError, request }) {
             {busy ? "Signing in…" : "Sign in to workspace"}
             <span aria-hidden="true">→</span>
           </button>
-          <p className="form-note">
-            Access is managed by your workspace administrator. Contact them if
-            you need an account.
-          </p>
         </form>
       </section>
     </main>

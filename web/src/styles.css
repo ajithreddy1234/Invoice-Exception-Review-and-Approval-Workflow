@@ -2947,3 +2947,31 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.reviewer-access {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid #d8e4d5;
+  border-radius: 9px;
+  background: #edf4eb;
+  color: #28493a;
+  font-size: 13px;
+}
+.reviewer-access p {
+  margin: 0 0 3px;
+}
+.reviewer-access a {
+  justify-self: start;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .login-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .login-form-panel {
+    order: -1;
+  }
+}
